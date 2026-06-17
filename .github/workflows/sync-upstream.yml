@@ -1,0 +1,31 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 每天北京时间早上 8:00 自动执行
+  workflow_dispatch: # 支持手动点击按钮触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync Upstream
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # 已经为你配置好上游地址
+          git remote add upstream https://github.com/NodeSeekDev/NodeGet-StatusShow.git
+          git fetch upstream
+          
+          # 切换并合并到你的 main 分支
+          git checkout main
+          git merge upstream/main --no-edit || echo "No changes or merge conflict"
+          
+          # 推送回你自己的仓库
+          git push origin main
