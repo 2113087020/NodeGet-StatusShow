@@ -11,7 +11,7 @@ export const defaultSiteTokens = [
     {
         "name": "Server",
         "backend_url": "wss://api.123906.xyz",
-        "token": "LVyrLLUtaA2ID8lL:n6FzBseulhOFXLX7Zieb0XLW4kZDfH5p"
+        "token": "fI7G4Uyz6GPzNIMP:DHfw55ucZxy089qNNtdVKqIicxLxWxQ3"
     }
 ]
 
