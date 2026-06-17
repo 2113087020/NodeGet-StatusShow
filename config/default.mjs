@@ -10,8 +10,8 @@ import pkg from '../package.json' with { type: 'json' }
 export const defaultSiteTokens = [
     {
         "name": "Server",
-        "backend_url": "wss://api.123906.xyz",
-        "token": "fI7G4Uyz6GPzNIMP:DHfw55ucZxy089qNNtdVKqIicxLxWxQ3"
+        "backend_url": "wss://123.456.789",
+        "token": "0"
     }
 ]
 
