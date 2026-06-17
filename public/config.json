@@ -6,12 +6,11 @@
   "theme_config": {
     "footer": "Powered by NodeGet"
   },
-  "user_preferences": {},
   "site_tokens": [
     {
       "name": "Server",
-      "backend_url": "wss://api.123906.xyz/nodeget/rpc",
-      "token": "fI7G4Uyz6GPzNIMP:DHfw55ucZxy089qNNtdVKqIicxLxWxQ3" 
+      "backend_url": "wss://api.123906.xyz",
+      "token": "fI7G4Uyz6GPzNIMP:DHfw55ucZxy089qNNtdVKqIicxLxWxQ3"
     }
   ]
 }
