@@ -10,7 +10,7 @@
   "site_tokens": [
     {
       "name": "Server",
-      "backend_url": "wss://api.123906.xyz",
+      "backend_url": "wss://api.123906.xyz/nodeget/rpc",
       "token": "fI7G4Uyz6GPzNIMP:DHfw55ucZxy089qNNtdVKqIicxLxWxQ3" 
     }
   ]
