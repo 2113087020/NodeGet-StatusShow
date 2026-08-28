@@ -16,7 +16,6 @@ const cnameMap = new Map<string, string>()
 const knownA2 = new Set<string>()
 let mapPromise: Promise<void> | null = null
 
-// 优化后的基准坐标
 const REGION_COORDS: Record<string, [number, number]> = {
   US: [-98.5795, 38.8283],
   HK: [114.1694, 21.0],
@@ -33,7 +32,6 @@ const REGION_COORDS: Record<string, [number, number]> = {
   KR: [128.5, 36.5],
 }
 
-// 针对密集区域的标签独立朝向与偏移，杜绝文字重叠
 const LABEL_LAYOUT: Record<string, { position: any; offset?: [number, number] }> = {
   US: { position: 'top', offset: [0, -2] },
   DE: { position: 'top', offset: [0, -2] },
@@ -117,7 +115,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
     return { byCountry: map, totalOnline, totalNodes }
   }, [nodes])
 
-  // 当前激活展示的节点数据（选中特定区域显示该区域，未选中则显示全部）
   const activeEntry = useMemo(() => {
     if (selectedA2 && byCountry.has(selectedA2)) {
       return byCountry.get(selectedA2)!
@@ -142,19 +139,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
   const option = useMemo(() => {
     const activeA2List = Array.from(byCountry.keys())
 
-    // 拓扑连线
-    const linesData: any[] = []
-    for (let i = 0; i < activeA2List.length; i++) {
-      for (let j = i + 1; j < activeA2List.length; j++) {
-        const c1 = REGION_COORDS[activeA2List[i]]
-        const c2 = REGION_COORDS[activeA2List[j]]
-        if (c1 && c2) {
-          linesData.push({ coords: [c1, c2] })
-        }
-      }
-    }
-
-    // 独立错位散点信标
     const scatterData = activeA2List
       .map(a2 => {
         const coord = REGION_COORDS[a2]
@@ -224,27 +208,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
       },
       series: [
         {
-          type: 'lines',
-          coordinateSystem: 'geo',
-          zlevel: 1,
-          effect: {
-            show: true,
-            period: 6,
-            trailLength: 0.2,
-            symbol: 'circle',
-            symbolSize: 3,
-            color: '#93c5fd',
-          },
-          lineStyle: {
-            color: '#60a5fa',
-            width: 1,
-            opacity: 0.35,
-            curveness: 0.2,
-            type: 'dashed',
-          },
-          data: linesData,
-        },
-        {
           type: 'effectScatter',
           coordinateSystem: 'geo',
           zlevel: 2,
@@ -265,7 +228,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
     if (!chartRef.current) {
       chartRef.current = echarts.init(wrapRef.current)
 
-      // 点击国家板块或散点信标
       chartRef.current.on('click', (p: any) => {
         const cur = liveRef.current
         const a2 = p.name || p.data?.name
@@ -274,7 +236,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
         }
       })
 
-      // 点击画布空白区域，重置为全部节点
       chartRef.current.getZr().on('click', (event: any) => {
         if (!event.target) {
           liveRef.current.setSelectedA2(null)
@@ -311,7 +272,7 @@ export function WorldMap({ nodes, onOpen }: Props) {
         </div>
       </div>
 
-      {/* 放大后的高比例地图视口 */}
+      {/* 地图视口 */}
       <div
         className="relative w-full rounded-2xl border border-white/60 dark:border-white/10 bg-white/20 dark:bg-slate-900/30 backdrop-blur-md overflow-hidden"
         style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}
@@ -321,7 +282,7 @@ export function WorldMap({ nodes, onOpen }: Props) {
           ● 点击信标聚焦，点击空白显示全部
         </div>
         <div className="absolute bottom-2 right-3 font-mono text-[10px] font-bold tracking-wider text-blue-600 dark:text-blue-400 uppercase pointer-events-none">
-          World Topology
+          World View
         </div>
       </div>
 
