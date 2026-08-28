@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUpDown, Check } from 'lucide-react'
-import { Button } from './ui/button'
+import { cn } from '../utils/cn'
 import type { Sort } from '../types'
 
 const OPTIONS: { value: Sort; label: string }[] = [
@@ -42,40 +42,54 @@ export function SortMenu({ value, onChange }: { value: Sort; onChange: (v: Sort)
   }, [open])
 
   return (
-    <div ref={ref} className="relative">
-      <Button
-        variant="outline"
-        size="sm"
+    <div ref={ref} className="relative flex items-center justify-center w-full h-full">
+      <button
+        type="button"
         onClick={() => setOpen(o => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="gap-1.5"
+        title={`排序: ${current.label}`}
+        className="w-full h-full rounded-full flex items-center justify-center text-slate-700 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white transition-colors bg-transparent border-none outline-none cursor-pointer"
       >
-        <ArrowUpDown className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">{current.label}</span>
-      </Button>
+        <ArrowUpDown className="h-4.5 w-4.5" />
+      </button>
+
       {show && (
         <div
           data-state={open ? 'open' : 'closed'}
           onAnimationEnd={() => {
             if (!open) setShow(false)
           }}
-          className="absolute right-0 mt-1 w-36 origin-top-right z-20 rounded-md border bg-popover shadow-md py-1 fill-mode-forwards data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+          className={cn(
+            "absolute right-0 top-full mt-2 w-36 origin-top-right z-50 p-1.5 rounded-2xl liquid-lens shadow-[0_12px_32px_rgba(0,0,0,0.12)] fill-mode-forwards",
+            "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+            "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+          )}
         >
-          {OPTIONS.map(o => (
-            <button
-              key={o.value}
-              type="button"
-              onClick={() => {
-                onChange(o.value)
-                setOpen(false)
-              }}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 text-sm hover:bg-accent"
-            >
-              <span>{o.label}</span>
-              {o.value === value && <Check className="h-3.5 w-3.5" />}
-            </button>
-          ))}
+          <div className="space-y-0.5">
+            {OPTIONS.map(o => {
+              const active = o.value === value
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(o.value)
+                    setOpen(false)
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-xl transition-all duration-150 cursor-pointer",
+                    active
+                      ? "bg-white/70 dark:bg-white/20 text-blue-600 dark:text-blue-400 font-semibold shadow-sm"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-white/40 dark:hover:bg-white/10"
+                  )}
+                >
+                  <span>{o.label}</span>
+                  {active && <Check className="h-3.5 w-3.5" />}
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
