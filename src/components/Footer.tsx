@@ -20,15 +20,21 @@ export function Footer({ text, repo, dist_page }: { text?: string, repo?: string
   const laststDist = dist_page ? `${dist_page}/NodeGet-StatusShow.zip?version=v${latest}` : repo + '/releases'
 
   return (
-    <footer className="relative z-10 w-full transition-all duration-300 pb-20 sm:pb-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+    <footer className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-28 sm:pb-32">
+      <div className="flex items-center justify-between gap-3 text-xs">
+        {/* Powered by 独立液态玻璃胶囊，固定跳转至 https://nezha.wiki/ */}
         <a 
-          href={repo} 
+          href="https://nezha.wiki/" 
           target="_blank" 
           rel="noreferrer" 
-          className="font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors drop-shadow-sm"
+          className={cn(
+            "inline-flex items-center px-4 py-2 rounded-full",
+            "liquid-lens text-slate-700 dark:text-slate-300 font-medium",
+            "hover:text-blue-600 dark:hover:text-blue-400 active:scale-95",
+            "transition-all duration-200 shadow-[0_4px_16px_rgba(0,0,0,0.05)]"
+          )}
         >
-          {text || 'Powered by NodeGet'}
+          {text || 'Powered by Nezha'}
         </a>
 
         {outdated && (
@@ -61,10 +67,10 @@ function GlassFooterItem({ href, children, className, title }: GlassFooterItemPr
       rel="noreferrer" 
       title={title}
       className={cn(
-        "inline-flex items-center px-3 py-1 rounded-full",
-        "bg-white/40 dark:bg-white/5 border border-white/60 dark:border-white/10",
+        "inline-flex items-center px-3.5 py-1.5 rounded-full",
+        "liquid-lens text-slate-700 dark:text-slate-300",
         "hover:bg-white/75 dark:hover:bg-white/15 hover:border-white/90 dark:hover:border-white/20 active:scale-95",
-        "transition-all duration-200",
+        "transition-all duration-200 shadow-[0_4px_16px_rgba(0,0,0,0.05)]",
         className
       )}
     >
