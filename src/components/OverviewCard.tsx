@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Activity, ArrowDown, ArrowUp, HardDriveDownload, HardDriveUpload, Server } from 'lucide-react'
+import { Activity, ArrowDown, ArrowUp, HardDriveUpload, Server } from 'lucide-react'
 import { Card } from './ui/card'
 import { bytes } from '../utils/format'
 import { deriveUsage } from '../utils/derive'
