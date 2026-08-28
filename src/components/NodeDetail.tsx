@@ -100,7 +100,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 h-full w-full overflow-hidden flex flex-col bg-soft select-none animate-in fade-in duration-150">
-      {/* 顶部悬浮导航：px-5 sm:px-7 */}
+      {/* 顶部悬浮导航 */}
       <div className="fixed top-0 inset-x-0 z-30 w-full px-5 sm:px-7 pt-3.5 pb-2 pointer-events-none">
         <div className="max-w-7xl mx-auto flex items-center gap-3">
           {/* 左侧：返回悬浮球 */}
@@ -591,7 +591,7 @@ function CostSection({ meta }: { meta: NodeMeta }) {
   return (
     <Section title="账单与费用">
       <div className="space-y-2 pt-1">
-        <KV k="续费月费" v={meta.price > 0 ? `${unit}${meta.price} / ${meta.priceCycle} 天` : null} />
+        <KV k="续费金额" v={meta.price > 0 ? `${unit}${meta.price} / ${meta.priceCycle} 天` : null} />
         <KV k="到期时间" v={meta.expireTime || null} />
         <KV k="剩余天数" v={<span className={cn(daysClass, "font-bold")}>{daysLabel}</span>} />
         <KV k="剩余价值 (估)" v={meta.price > 0 ? `${unit}${value.toFixed(2)}` : null} />
@@ -601,11 +601,11 @@ function CostSection({ meta }: { meta: NodeMeta }) {
             <div className="h-2 w-full rounded-full bg-black/5 dark:bg-slate-800/80 overflow-hidden">
               <div
                 className={cn('h-full rounded-full transition-all duration-500', barColor)}
-                style={{ width: `${progress}%` }}
+                style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
               />
             </div>
             <div className="text-[10px] font-mono text-center text-slate-500 dark:text-slate-400 mt-2">
-              周期已使用 {progress.toFixed(0)}%
+              周期剩余 {progress.toFixed(0)}%
             </div>
           </div>
         )}
