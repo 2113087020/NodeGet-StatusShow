@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { parseGitRepo } from "../utils/git"
 import { ExternalLink, HardDriveDownload, FolderSync } from 'lucide-react'
-
+import { cn } from '../utils/cn'
 
 export function Footer({ text, repo, dist_page }: { text?: string, repo?: string, dist_page?: string }) {
   const [latest, setLatest] = useState<string | null>(null)
@@ -20,24 +20,69 @@ export function Footer({ text, repo, dist_page }: { text?: string, repo?: string
   const laststDist = dist_page ? `${dist_page}/NodeGet-StatusShow.zip?version=v${latest}` : repo + '/releases'
 
   return (
-    <footer className="border-t">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-end gap-3 text-xs text-muted-foreground">
-        <a href={repo} target="_blank" rel="noreferrer" className="hover:text-primary transition-colors mr-auto">
+    <footer className={cn(
+      "relative z-10 transition-all duration-300",
+      "border-t border-white/60 dark:border-white/10",
+      "bg-white/55 dark:bg-slate-900/40 backdrop-blur-xl backdrop-saturate-150",
+      "shadow-[0_-4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)]"
+    )}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-end gap-3 text-xs text-slate-600 dark:text-slate-400">
+        <a 
+          href={repo} 
+          target="_blank" 
+          rel="noreferrer" 
+          className="font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors mr-auto drop-shadow-sm"
+        >
           {text || 'Powered by NodeGet'}
         </a>
-        <a href="download.html" target="_blank" rel="noreferrer" className="ml-2 flex items-center hover:text-primary transition-colors">
-          <HardDriveDownload className='inline-block w-3 mr-1' />
+
+        <GlassFooterItem 
+          href="download.html"
+          title="提取当前自定义的主题配置"
+        >
+          <HardDriveDownload className='inline-block w-3.5 mr-1.5 opacity-80' />
           提取当前主题
-        </a>
+        </GlassFooterItem>
+
         {outdated && (
-          <>
-            <a href={laststDist} target="_blank" rel="noreferrer" className="flex items-center hover:text-primary transition-colors ml-2 text-destructive">
-              <FolderSync className='inline-block w-3 mr-1' />
-              升级到 v{latest}
-            </a>
-          </>
+          <GlassFooterItem 
+            href={laststDist}
+            className="text-red-600 dark:text-red-400 bg-red-100/40 dark:bg-red-950/40 border-red-200/50 dark:border-red-800/50 hover:bg-red-200/50 dark:hover:bg-red-900/60 hover:border-red-300/60 shadow-[0_2px_8px_rgba(239,68,68,0.2)]"
+            title="检测到新版本，请及时升级以获得最佳体验和安全性"
+          >
+            <FolderSync className='inline-block w-3.5 mr-1.5 opacity-80' />
+            升级到 v{latest}
+          </GlassFooterItem>
         )}
       </div>
     </footer>
+  )
+}
+
+interface GlassFooterItemProps {
+  href: string
+  children: React.ReactNode
+  className?: string
+  title?: string
+}
+
+function GlassFooterItem({ href, children, className, title }: GlassFooterItemProps) {
+  return (
+    <a 
+      href={href} 
+      target="_blank" 
+      rel="noreferrer" 
+      title={title}
+      className={cn(
+        "inline-flex items-center px-3 py-1.2 rounded-full",
+        "bg-white/40 dark:bg-white/5 border border-white/60 dark:border-white/10",
+        "shadow-inner-[0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-none shadow-[0_1px_2px_rgba(0,0,0,0.02)]",
+        "hover:bg-white/75 dark:hover:bg-white/15 hover:border-white/90 dark:hover:border-white/20 active:scale-95",
+        "transition-all duration-200",
+        className
+      )}
+    >
+      {children}
+    </a>
   )
 }
