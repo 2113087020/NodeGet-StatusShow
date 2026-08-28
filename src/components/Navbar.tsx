@@ -19,10 +19,10 @@ interface Props {
 export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onSort }: Props) {
   return (
     <>
-      {/* 顶部悬浮操作区：恢复标准 h-12 尺寸 */}
+      {/* 顶部悬浮操作区：与下方卡片对齐 */}
       <header className="sticky top-0 z-30 w-full px-4 sm:px-6 pt-3.5 pb-1 pointer-events-none">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          {/* 左侧：Logo 胶囊 + 紧凑短搜索框 */}
+          {/* 左侧弹性区域：Logo 胶囊 + 自适应搜索框 */}
           <div className="flex items-center gap-2.5 flex-1 min-w-0 pointer-events-auto">
             <a
               href="./"
@@ -40,8 +40,8 @@ export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onS
               </span>
             </a>
 
-            {/* 调短的独立搜索条 */}
-            <div className="w-32 sm:w-48 h-12 px-3 rounded-full flex items-center gap-2 liquid-lens shrink-0">
+            {/* 自适应长度搜索框：自动吃满空隙并限制上限 */}
+            <div className="flex-1 min-w-[72px] max-w-[220px] sm:max-w-xs h-12 px-3 rounded-full flex items-center gap-2 liquid-lens">
               <SearchIcon className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
               <input
                 type="text"
@@ -74,7 +74,7 @@ export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onS
             </div>
           </div>
 
-          {/* 右上角：恢复原本大小的独立排序球 */}
+          {/* 右上角：独立排序球（与卡片最右侧自然贴合） */}
           <div className="pointer-events-auto shrink-0">
             <div className="w-12 h-12 rounded-full flex items-center justify-center liquid-lens active:scale-95 transition-all duration-200">
               <SortMenu value={sort} onChange={onSort} />
