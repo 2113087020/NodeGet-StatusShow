@@ -29,7 +29,7 @@ import type { BackendPool } from '../api/pool'
 import type { HistorySample, LatencyType, Node, NodeMeta, TaskQueryResult } from '../types'
 
 const TOOLTIP_STYLE = {
-  background: 'rgba(255, 255, 255, 0.85)',
+  background: 'rgba(255, 255, 255, 0.75)',
   border: '1px solid rgba(255, 255, 255, 0.8)',
   borderRadius: 8,
   fontSize: 11,
@@ -38,7 +38,7 @@ const TOOLTIP_STYLE = {
 }
 
 const DARK_TOOLTIP_STYLE = {
-  background: 'rgba(15, 23, 42, 0.85)',
+  background: 'rgba(15, 23, 42, 0.75)',
   border: '1px solid rgba(255, 255, 255, 0.1)',
   borderRadius: 8,
   fontSize: 11,
@@ -55,8 +55,6 @@ interface Props {
 
 export function NodeDetail({ node, onClose, showSource, pool }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const headerRef = useRef<HTMLDivElement>(null)
-  const [stuck, setStuck] = useState(false)
   const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
@@ -76,18 +74,6 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
       document.body.style.overflow = prev
     }
   }, [node, onClose])
-
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    setStuck(false)
-    const onScroll = () => {
-      const h = headerRef.current?.offsetHeight ?? 60
-      setStuck(el.scrollTop > 10)
-    }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [node])
 
   const { pingData, tcpData, loading: latencyLoading } = useNodeLatency(
     pool,
@@ -117,59 +103,59 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
       ref={scrollRef}
       className={cn(
         "fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-150",
-        "bg-white/60 dark:bg-black/70 backdrop-blur-md"
+        "bg-white/10 dark:bg-black/40 backdrop-blur-sm"
       )}
     >
-      <div
-        ref={headerRef}
-        className={cn(
-          "sticky top-0 z-10 transition-all duration-200",
-          stuck
-            ? 'border-b border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.03)]'
-            : 'border-b border-transparent bg-transparent'
-        )}
-      >
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center gap-2 sm:gap-3">
+      {/* 顶部悬浮玻璃栏 */}
+      <div className="sticky top-0 z-20 w-full px-3 sm:px-6 pt-3 pb-2 pointer-events-none">
+        <div className="max-w-5xl mx-auto flex items-center gap-2 sm:gap-3 pointer-events-auto">
+          {/* 左侧：独立高透玻璃球返回键 */}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onClose} 
             aria-label="返回" 
-            className="shrink-0 rounded-full bg-white/50 dark:bg-white/5 hover:bg-white/80 border border-white/60 dark:border-white/10 shadow-sm"
+            className="w-10 h-10 rounded-full shrink-0 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.04)] hover:bg-white/60 active:scale-95 transition-all duration-200"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4.5 w-4.5 text-slate-800 dark:text-slate-100" />
           </Button>
-          <StatusDot online={node.online} />
-          {logo && (
-            <img src={logo} alt="" className="w-5 h-5 shrink-0 object-contain" loading="lazy" />
-          )}
-          <span className="font-semibold text-slate-800 dark:text-slate-100 truncate min-w-0">{displayName(node)}</span>
-          <Flag code={node.meta?.region} className="shrink-0" />
-          <span className="hidden md:inline truncate text-xs font-mono text-muted-foreground">
-            {node.uuid}
-          </span>
-          <div className="ml-auto flex flex-wrap gap-1.5 shrink-0">
-            {node.meta?.region && <GlassBadge>{node.meta.region}</GlassBadge>}
-            {showSource && (
-              <GlassBadge className="hidden sm:inline-flex">
-                {node.source}
-              </GlassBadge>
+
+          {/* 右侧：高透长条玻璃胶囊 */}
+          <div className="flex-1 min-w-0 h-10 px-3.5 sm:px-4 rounded-full flex items-center gap-2 sm:gap-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+            <StatusDot online={node.online} />
+            {logo && (
+              <img src={logo} alt="" className="w-5 h-5 shrink-0 object-contain drop-shadow-sm" loading="lazy" />
             )}
-            {virt && <GlassBadge>{virt}</GlassBadge>}
-            {tags.map(t => (
-              <Badge 
-                key={t} 
-                variant="outline"
-                className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/40 dark:bg-white/5 border-white/60 dark:border-white/10"
-              >
-                {t}
-              </Badge>
-            ))}
+            <span className="font-semibold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate min-w-0 tracking-tight">
+              {displayName(node)}
+            </span>
+            <Flag code={node.meta?.region} className="shrink-0" />
+            <span className="hidden md:inline truncate text-xs font-mono text-slate-500 dark:text-slate-400">
+              {node.uuid}
+            </span>
+            <div className="ml-auto flex items-center gap-1.5 shrink-0 overflow-hidden">
+              {node.meta?.region && <GlassBadge>{node.meta.region}</GlassBadge>}
+              {showSource && (
+                <GlassBadge className="hidden sm:inline-flex">
+                  {node.source}
+                </GlassBadge>
+              )}
+              {virt && <GlassBadge>{virt}</GlassBadge>}
+              {tags.map(t => (
+                <Badge 
+                  key={t} 
+                  variant="outline"
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-white/30 dark:bg-white/5 border-white/60 dark:border-white/10 shrink-0"
+                >
+                  {t}
+                </Badge>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 pb-12 space-y-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-3 pb-12 space-y-6">
         <Section title="资源状态">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-6 gap-x-4 py-2">
             <Ring label="CPU" value={u.cpu} sub={loadAvg ?? undefined} />
@@ -295,12 +281,12 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Card className={cn(
-      "p-6 rounded-2xl",
-      "bg-white/60 dark:bg-slate-900/50 backdrop-blur-md",
-      "border border-white/80 dark:border-white/10",
-      "shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.2)]",
+      "p-6 rounded-3xl",
+      "bg-white/30 dark:bg-slate-900/30 backdrop-blur-md",
+      "border border-white/70 dark:border-white/10",
+      "shadow-[0_8px_32px_0_rgba(31,38,135,0.05)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)]",
     )}>
-      <div className="text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-5">{title}</div>
+      <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-300 mb-5">{title}</div>
       {children}
     </Card>
   )
@@ -309,8 +295,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function KV({ k, v }: { k: string; v: ReactNode }) {
   if (v == null || v === '') return null
   return (
-    <div className="flex justify-between items-center gap-3 text-sm py-1.5 px-1 rounded hover:bg-white/30 dark:hover:bg-white/5">
-      <span className="text-muted-foreground">{k}</span>
+    <div className="flex justify-between items-center gap-3 text-sm py-1.5 px-2 rounded-xl hover:bg-white/30 dark:hover:bg-white/5 transition-colors">
+      <span className="text-slate-500 dark:text-slate-400">{k}</span>
       <span className="font-mono text-right text-slate-800 dark:text-slate-100 font-medium truncate">{v}</span>
     </div>
   )
@@ -329,7 +315,7 @@ function Ring({ label, value, sub }: { label: string; value?: number; sub?: stri
           <circle
             cx="50" cy="50" r={r}
             fill="none" strokeWidth={8}
-            className="stroke-slate-200/70 dark:stroke-slate-800/80"
+            className="stroke-white/40 dark:stroke-slate-800/60"
           />
           {hasValue && (
             <circle
@@ -349,7 +335,7 @@ function Ring({ label, value, sub }: { label: string; value?: number; sub?: stri
       </div>
       <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{label}</div>
       {sub && (
-        <div className="text-xs font-mono text-muted-foreground truncate max-w-full" title={sub}>
+        <div className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate max-w-full" title={sub}>
           {sub}
         </div>
       )}
@@ -374,12 +360,12 @@ function Spark({ data, dataKey, label, stroke, domain, format, isDark }: SparkPr
 
   return (
     <div className={cn(
-      "rounded-xl p-4 transition-all",
-      "bg-white/50 dark:bg-slate-900/40 border border-white/70 dark:border-white/5",
+      "rounded-2xl p-4 transition-all",
+      "bg-white/25 dark:bg-slate-900/25 border border-white/60 dark:border-white/5",
       "shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
     )}>
       <div className="flex justify-between items-baseline mb-2">
-        <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">{label}</span>
         <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200">{format(last)}</span>
       </div>
       <div className="h-20">
@@ -443,9 +429,9 @@ function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps)
 
   return (
     <Section title={`${title} · 近 1 小时趋势`}>
-      <div className="relative h-60 bg-white/30 dark:bg-slate-950/20 rounded-xl border border-white/60 dark:border-white/5 p-2 mb-4">
+      <div className="relative h-60 bg-white/20 dark:bg-slate-950/20 rounded-2xl border border-white/50 dark:border-white/5 p-2 mb-4">
         {empty && (
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400">
             {loading ? '正在从探针节点加载中…' : `暂无 ${type} 延迟数据`}
           </div>
         )}
@@ -496,8 +482,8 @@ function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps)
       </div>
 
       {stats.length > 0 && (
-        <div className="mt-3 border-t border-slate-200/80 dark:border-white/10 pt-3.5 space-y-1">
-          <div className="flex items-center px-2.5 pb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="mt-3 border-t border-white/40 dark:border-white/10 pt-3.5 space-y-1">
+          <div className="flex items-center px-2.5 pb-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             <span className="flex-1">检测来源节点</span>
             <span className="w-20 text-right">平均延迟</span>
             <span className="w-16 text-right">抖动</span>
@@ -549,13 +535,13 @@ function LatencyStatsRow({
       <span className="w-20 text-right tabular-nums font-mono text-slate-800 dark:text-slate-100 font-semibold">
         {avg != null ? ms(avg) : '—'}
       </span>
-      <span className="w-16 text-right tabular-nums font-mono text-muted-foreground">
+      <span className="w-16 text-right tabular-nums font-mono text-slate-500 dark:text-slate-400">
         {jitter != null ? ms(jitter) : '—'}
       </span>
       <span
         className={cn(
           'w-14 text-right tabular-nums font-mono',
-          lossRate >= 5 ? 'text-red-500 font-semibold' : 'text-muted-foreground',
+          lossRate >= 5 ? 'text-red-500 font-semibold' : 'text-slate-500 dark:text-slate-400',
         )}
       >
         {lossRate.toFixed(1)}%
@@ -570,8 +556,8 @@ function GlassBadge({ children, className }: { children: ReactNode; className?: 
       variant="outline"
       className={cn(
         "text-[10px] px-2.5 py-0.5 rounded-full",
-        "bg-white/40 dark:bg-white/5 border-white/60 dark:border-white/10",
-        "text-slate-700 dark:text-slate-300 uppercase tracking-wide",
+        "bg-white/30 dark:bg-white/5 border-white/60 dark:border-white/10",
+        "text-slate-800 dark:text-slate-200 uppercase tracking-wide",
         className
       )}
     >
@@ -621,13 +607,13 @@ function CostSection({ meta }: { meta: NodeMeta }) {
 
         {meta.expireTime && days != null && (
           <div className="mt-4 px-1">
-            <div className="h-2 w-full rounded-full bg-slate-200/60 dark:bg-slate-800/80 overflow-hidden">
+            <div className="h-2 w-full rounded-full bg-white/40 dark:bg-slate-800/80 overflow-hidden border border-white/50 dark:border-white/5">
               <div
                 className={cn('h-full rounded-full transition-all duration-500', barColor)}
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <div className="text-[10px] font-mono text-center text-muted-foreground mt-2">
+            <div className="text-[10px] font-mono text-center text-slate-500 dark:text-slate-400 mt-2">
               周期已使用 {progress.toFixed(0)}%
             </div>
           </div>
