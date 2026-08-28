@@ -11,6 +11,7 @@ import { NodeTable } from './components/NodeTable'
 import { NodeDetail } from './components/NodeDetail'
 import { TagFilter } from './components/TagFilter'
 import { RegionFilter } from './components/RegionFilter'
+import { OverviewCard } from './components/OverviewCard'
 
 const WorldMap = lazy(() =>
   import('./components/WorldMap').then(m => ({ default: m.WorldMap })),
@@ -97,6 +98,8 @@ export function App() {
       .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code))
     return { list, total }
   }, [nodes])
+
+  const rawNodeList = useMemo(() => [...nodes.values()], [nodes])
 
   useEffect(() => {
     if (activeTag && !allTags.includes(activeTag)) setActiveTag(null)
@@ -201,9 +204,12 @@ export function App() {
         hidden={Boolean(selected)}
       />
 
-      {/* 独立滚动区域：顶部留出 pt-20 安全间距，滑动时内容自然从胶囊下方穿过 */}
+      {/* 独立滚动区域 */}
       <div className="flex-1 w-full overflow-y-auto overscroll-contain">
         <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 pt-20 pb-28 space-y-6">
+          {/* 全局概览卡片（国家栏上方） */}
+          {!empty && <OverviewCard nodes={rawNodeList} />}
+
           {!empty && (
             <RegionFilter
               regions={regions.list}
