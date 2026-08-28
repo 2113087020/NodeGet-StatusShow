@@ -179,7 +179,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
         if (!e) return
         if (e.nodes.length === 1) cur.onOpen?.(e.nodes[0].uuid)
         else {
-          // 点击弹出列表时，隐藏默认悬浮提示，防止互相盖住
           chartRef.current?.dispatchAction({ type: 'hideTip' })
           setPickedA2(p.name)
         }
@@ -212,11 +211,12 @@ export function WorldMap({ nodes, onOpen }: Props) {
         </div>
       </div>
 
+      {/* 地图背景容器 */}
       <div
-        className="relative w-full overflow-hidden rounded-2xl border border-white/60 dark:border-white/10 bg-slate-900/80 dark:bg-slate-950/70 backdrop-blur-md shadow-inner"
+        className="relative w-full rounded-2xl border border-white/60 dark:border-white/10 bg-slate-900/80 dark:bg-slate-950/70 backdrop-blur-md shadow-inner"
         style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}
       >
-        <div ref={wrapRef} className="absolute inset-0" />
+        <div ref={wrapRef} className="absolute inset-0 rounded-2xl overflow-hidden" />
 
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center text-sm text-white/80">
@@ -232,6 +232,7 @@ export function WorldMap({ nodes, onOpen }: Props) {
           </div>
         )}
 
+        {/* 适配地图边界的自适应弹窗 */}
         {renderEntry && renderA2 && (
           <NodePopover
             a2={renderA2}
@@ -368,16 +369,16 @@ function NodePopover({
     <div
       data-state={open ? 'open' : 'closed'}
       className={cn(
-        "absolute right-3 top-3 z-30 w-64 rounded-2xl border shadow-2xl overflow-hidden origin-top-right duration-150 fill-mode-forwards",
-        "bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border-white/80 dark:border-white/20",
+        "absolute right-2 sm:right-3 top-2 bottom-2 z-30 w-60 sm:w-64 max-h-[calc(100%-1rem)] flex flex-col rounded-2xl border shadow-2xl overflow-hidden origin-top-right duration-150 fill-mode-forwards",
+        "bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/80 dark:border-white/20",
         "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
         "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
       )}
       onClick={e => e.stopPropagation()}
       onMouseDown={e => e.stopPropagation()}
     >
-      <div key={a2} className="animate-in fade-in-0 duration-100 fill-mode-forwards">
-        <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-black/5 dark:border-white/10">
+      <div key={a2} className="flex flex-col h-full overflow-hidden animate-in fade-in-0 duration-100 fill-mode-forwards">
+        <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-black/5 dark:border-white/10 shrink-0">
           <Flag code={a2} className="shrink-0 drop-shadow-sm" />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-bold truncate leading-tight text-slate-900 dark:text-slate-100">{cname}</div>
@@ -386,7 +387,6 @@ function NodePopover({
               {entry.offline > 0 && <span className="ml-2 text-slate-500 dark:text-slate-400">{entry.offline} 离线</span>}
             </div>
           </div>
-          {/* 清晰的关闭按钮 */}
           <button
             onClick={onClose}
             aria-label="关闭"
@@ -395,7 +395,7 @@ function NodePopover({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="max-h-72 overflow-auto py-1">
+        <div className="flex-1 overflow-y-auto overscroll-contain py-1">
           {entry.nodes.map(n => {
             const logo = distroLogo(n)
             return (
