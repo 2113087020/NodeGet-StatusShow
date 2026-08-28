@@ -78,36 +78,48 @@
 }
 
 .dark .bg-soft {
-  background-color: #0f172a;
+  background-color: #0d1322;
   background-image:
-    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.5) 0px, transparent 60%),
-    radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.45) 0px, transparent 60%),
-    radial-gradient(at 50% 50%, rgba(147, 51, 234, 0.4) 0px, transparent 65%),
-    radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.35) 0px, transparent 60%),
-    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.45) 0px, transparent 60%);
+    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.45) 0px, transparent 60%),
+    radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.4) 0px, transparent 60%),
+    radial-gradient(at 50% 50%, rgba(147, 51, 234, 0.35) 0px, transparent 65%),
+    radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.3) 0px, transparent 60%),
+    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.4) 0px, transparent 60%);
 }
 
-/* 微调透明度与毛玻璃折射 */
+/* 仿 ColorOS / 液态玻璃拟态：纯正单向顶光折射，杜绝四圈发白 */
 .liquid-lens {
   position: relative;
   isolation: isolate;
-  background-color: rgba(255, 255, 255, 0.30) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
-  backdrop-filter: blur(10px) saturate(140%) !important;
-  border: 1.2px solid rgba(255, 255, 255, 0.75);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.25) 100%
+  ) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+  backdrop-filter: blur(24px) saturate(160%) !important;
+  /* 极细微的漫反射边框 */
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  /* 仅在顶部有 1px 细高光，底部有柔和下沉阴影，不再整体四面发光 */
   box-shadow: 
-    0 6px 20px -4px rgba(0, 0, 0, 0.06),
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -1px 1.5px 0 rgba(255, 255, 255, 0.25);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+    0 10px 24px -6px rgba(0, 0, 0, 0.08),
+    0 2px 6px -1px rgba(0, 0, 0, 0.04) !important;
 }
 
 .dark .liquid-lens {
-  background-color: rgba(15, 23, 42, 0.38) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
-  backdrop-filter: blur(10px) saturate(140%) !important;
-  border: 1.2px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(
+    180deg,
+    rgba(30, 41, 59, 0.45) 0%,
+    rgba(15, 23, 42, 0.55) 100%
+  ) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+  backdrop-filter: blur(24px) saturate(160%) !important;
+  /* 深色下极细微的冷色边缘 */
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  /* 顶部细高光 + 底部沉浸投影 */
   box-shadow: 
-    0 6px 20px -4px rgba(0, 0, 0, 0.3),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -1px 1.5px 0 rgba(0, 0, 0, 0.25);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+    0 12px 28px -6px rgba(0, 0, 0, 0.45),
+    0 2px 6px -1px rgba(0, 0, 0, 0.3) !important;
 }
