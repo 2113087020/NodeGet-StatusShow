@@ -60,12 +60,16 @@ export function SortMenu({ value, onChange }: { value: Sort; onChange: (v: Sort)
           onAnimationEnd={() => {
             if (!open) setShow(false)
           }}
+          style={{
+            WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+            backdropFilter: 'blur(24px) saturate(160%)',
+          }}
           className={cn(
-            "pointer-events-auto absolute right-0 top-full mt-2 w-36 min-w-[9rem] origin-top-right z-50 p-1.5 rounded-2xl fill-mode-forwards",
-            "bg-white/65 dark:bg-slate-900/75 backdrop-blur-[20px] backdrop-saturate-[180%]",
-            "border-[1.5px] border-white/90 dark:border-white/20",
-            "shadow-[0_12px_32px_rgba(0,0,0,0.12),inset_0_1.5px_2px_0_rgba(255,255,255,0.9),inset_0_-1px_2px_0_rgba(255,255,255,0.4)]",
-            "dark:shadow-[0_12px_32px_rgba(0,0,0,0.45),inset_0_1.5px_1px_0_rgba(255,255,255,0.25),inset_0_-1px_2px_0_rgba(0,0,0,0.4)]",
+            "pointer-events-auto absolute right-0 top-full mt-2 w-36 min-w-[9rem] origin-top-right z-50 p-1.5 rounded-2xl border fill-mode-forwards",
+            "bg-gradient-to-b from-white/45 to-white/25 dark:from-slate-800/45 dark:to-slate-900/55",
+            "border-white/40 dark:border-white/10",
+            "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7),0_12px_28px_-6px_rgba(0,0,0,0.12)]",
+            "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2),0_12px_28px_-6px_rgba(0,0,0,0.5)]",
             "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
             "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
           )}
@@ -84,8 +88,8 @@ export function SortMenu({ value, onChange }: { value: Sort; onChange: (v: Sort)
                   className={cn(
                     "w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-xl whitespace-nowrap transition-all duration-150 cursor-pointer",
                     active
-                      ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold shadow-sm"
-                      : "text-slate-800 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10"
+                      ? "bg-white/60 dark:bg-white/20 text-blue-600 dark:text-blue-400 font-bold shadow-sm"
+                      : "text-slate-800 dark:text-slate-200 hover:bg-white/40 dark:hover:bg-white/10"
                   )}
                 >
                   <span>{o.label}</span>
