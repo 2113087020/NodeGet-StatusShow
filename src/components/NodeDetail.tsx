@@ -29,21 +29,21 @@ import type { BackendPool } from '../api/pool'
 import type { HistorySample, LatencyType, Node, NodeMeta, TaskQueryResult } from '../types'
 
 const TOOLTIP_STYLE = {
-  background: 'rgba(255, 255, 255, 0.75)',
-  border: '1px solid rgba(255, 255, 255, 0.8)',
+  background: 'rgba(255, 255, 255, 0.85)',
+  border: '1px solid rgba(255, 255, 255, 0.9)',
   borderRadius: 8,
   fontSize: 11,
   boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-  color: '#333'
+  color: '#1e293b'
 }
 
 const DARK_TOOLTIP_STYLE = {
-  background: 'rgba(15, 23, 42, 0.75)',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
+  background: 'rgba(15, 23, 42, 0.85)',
+  border: '1px solid rgba(255, 255, 255, 0.15)',
   borderRadius: 8,
   fontSize: 11,
   boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-  color: '#eee'
+  color: '#f8fafc'
 }
 
 interface Props {
@@ -103,25 +103,25 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
       ref={scrollRef}
       className={cn(
         "fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-150",
-        "bg-white/10 dark:bg-black/40 backdrop-blur-sm"
+        "bg-slate-900/15 dark:bg-black/45 backdrop-blur-[3px]"
       )}
     >
-      {/* 顶部悬浮玻璃栏 */}
+      {/* 顶部独立透镜悬浮栏 */}
       <div className="sticky top-0 z-20 w-full px-3 sm:px-6 pt-3 pb-2 pointer-events-none">
         <div className="max-w-5xl mx-auto flex items-center gap-2 sm:gap-3 pointer-events-auto">
-          {/* 左侧：独立高透玻璃球返回键 */}
+          {/* 左侧：独立高光折射玻璃球 */}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onClose} 
             aria-label="返回" 
-            className="w-10 h-10 rounded-full shrink-0 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.04)] hover:bg-white/60 active:scale-95 transition-all duration-200"
+            className="w-11 h-11 rounded-full shrink-0 liquid-lens active:scale-95 transition-all duration-200"
           >
-            <ArrowLeft className="h-4.5 w-4.5 text-slate-800 dark:text-slate-100" />
+            <ArrowLeft className="h-5 w-5 text-slate-800 dark:text-slate-100" />
           </Button>
 
-          {/* 右侧：高透长条玻璃胶囊 */}
-          <div className="flex-1 min-w-0 h-10 px-3.5 sm:px-4 rounded-full flex items-center gap-2 sm:gap-3 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+          {/* 右侧：长条液态透镜胶囊 */}
+          <div className="flex-1 min-w-0 h-11 px-4 sm:px-5 rounded-full flex items-center gap-2.5 sm:gap-3.5 liquid-lens">
             <StatusDot online={node.online} />
             {logo && (
               <img src={logo} alt="" className="w-5 h-5 shrink-0 object-contain drop-shadow-sm" loading="lazy" />
@@ -145,7 +145,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
                 <Badge 
                   key={t} 
                   variant="outline"
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-white/30 dark:bg-white/5 border-white/60 dark:border-white/10 shrink-0"
+                  className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/40 dark:bg-white/10 border-white/70 dark:border-white/20 shrink-0"
                 >
                   {t}
                 </Badge>
@@ -280,13 +280,8 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Card className={cn(
-      "p-6 rounded-3xl",
-      "bg-white/30 dark:bg-slate-900/30 backdrop-blur-md",
-      "border border-white/70 dark:border-white/10",
-      "shadow-[0_8px_32px_0_rgba(31,38,135,0.05)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)]",
-    )}>
-      <div className="text-xs uppercase tracking-wider font-semibold text-slate-600 dark:text-slate-300 mb-5">{title}</div>
+    <Card className="p-6 rounded-3xl liquid-lens">
+      <div className="text-xs uppercase tracking-wider font-semibold text-slate-700 dark:text-slate-300 mb-5">{title}</div>
       {children}
     </Card>
   )
@@ -295,9 +290,9 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function KV({ k, v }: { k: string; v: ReactNode }) {
   if (v == null || v === '') return null
   return (
-    <div className="flex justify-between items-center gap-3 text-sm py-1.5 px-2 rounded-xl hover:bg-white/30 dark:hover:bg-white/5 transition-colors">
-      <span className="text-slate-500 dark:text-slate-400">{k}</span>
-      <span className="font-mono text-right text-slate-800 dark:text-slate-100 font-medium truncate">{v}</span>
+    <div className="flex justify-between items-center gap-3 text-sm py-1.5 px-2.5 rounded-xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+      <span className="text-slate-600 dark:text-slate-400 font-medium">{k}</span>
+      <span className="font-mono text-right text-slate-900 dark:text-slate-100 font-semibold truncate">{v}</span>
     </div>
   )
 }
@@ -315,7 +310,7 @@ function Ring({ label, value, sub }: { label: string; value?: number; sub?: stri
           <circle
             cx="50" cy="50" r={r}
             fill="none" strokeWidth={8}
-            className="stroke-white/40 dark:stroke-slate-800/60"
+            className="stroke-black/5 dark:stroke-white/10"
           />
           {hasValue && (
             <circle
@@ -329,11 +324,11 @@ function Ring({ label, value, sub }: { label: string; value?: number; sub?: stri
             />
           )}
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 font-mono">
+        <div className="absolute inset-0 flex items-center justify-center text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">
           {pct(value)}
         </div>
       </div>
-      <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{label}</div>
+      <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">{label}</div>
       {sub && (
         <div className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate max-w-full" title={sub}>
           {sub}
@@ -359,21 +354,17 @@ function Spark({ data, dataKey, label, stroke, domain, format, isDark }: SparkPr
   const tooltipStyle = isDark ? DARK_TOOLTIP_STYLE : TOOLTIP_STYLE;
 
   return (
-    <div className={cn(
-      "rounded-2xl p-4 transition-all",
-      "bg-white/25 dark:bg-slate-900/25 border border-white/60 dark:border-white/5",
-      "shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
-    )}>
+    <div className="rounded-2xl p-4 transition-all bg-white/40 dark:bg-white/5 border border-white/80 dark:border-white/10 shadow-inner">
       <div className="flex justify-between items-baseline mb-2">
-        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">{label}</span>
-        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200">{format(last)}</span>
+        <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{label}</span>
+        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">{format(last)}</span>
       </div>
       <div className="h-20">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={stroke} stopOpacity={0.3} />
+                <stop offset="5%" stopColor={stroke} stopOpacity={0.35} />
                 <stop offset="95%" stopColor={stroke} stopOpacity={0} />
               </linearGradient>
             </defs>
@@ -429,7 +420,7 @@ function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps)
 
   return (
     <Section title={`${title} · 近 1 小时趋势`}>
-      <div className="relative h-60 bg-white/20 dark:bg-slate-950/20 rounded-2xl border border-white/50 dark:border-white/5 p-2 mb-4">
+      <div className="relative h-60 bg-white/35 dark:bg-slate-950/30 rounded-2xl border border-white/80 dark:border-white/10 p-2 mb-4">
         {empty && (
           <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400">
             {loading ? '正在从探针节点加载中…' : `暂无 ${type} 延迟数据`}
@@ -482,8 +473,8 @@ function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps)
       </div>
 
       {stats.length > 0 && (
-        <div className="mt-3 border-t border-white/40 dark:border-white/10 pt-3.5 space-y-1">
-          <div className="flex items-center px-2.5 pb-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        <div className="mt-3 border-t border-white/70 dark:border-white/10 pt-3.5 space-y-1">
+          <div className="flex items-center px-2.5 pb-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
             <span className="flex-1">检测来源节点</span>
             <span className="w-20 text-right">平均延迟</span>
             <span className="w-16 text-right">抖动</span>
@@ -521,7 +512,7 @@ function LatencyStatsRow({
       onClick={onToggle}
       className={cn(
         'flex items-center px-2.5 py-1.5 rounded-xl text-xs cursor-pointer select-none transition-colors',
-        'hover:bg-white/40 dark:hover:bg-white/5',
+        'hover:bg-white/50 dark:hover:bg-white/5',
         hidden ? 'opacity-35' : 'opacity-100',
       )}
     >
@@ -530,18 +521,18 @@ function LatencyStatsRow({
           className="inline-block w-3.5 h-1 rounded-full shrink-0"
           style={{ background: color }}
         />
-        <span className="truncate font-medium">{name}</span>
+        <span className="truncate font-semibold">{name}</span>
       </span>
-      <span className="w-20 text-right tabular-nums font-mono text-slate-800 dark:text-slate-100 font-semibold">
+      <span className="w-20 text-right tabular-nums font-mono text-slate-900 dark:text-slate-100 font-bold">
         {avg != null ? ms(avg) : '—'}
       </span>
-      <span className="w-16 text-right tabular-nums font-mono text-slate-500 dark:text-slate-400">
+      <span className="w-16 text-right tabular-nums font-mono text-slate-600 dark:text-slate-400 font-medium">
         {jitter != null ? ms(jitter) : '—'}
       </span>
       <span
         className={cn(
           'w-14 text-right tabular-nums font-mono',
-          lossRate >= 5 ? 'text-red-500 font-semibold' : 'text-slate-500 dark:text-slate-400',
+          lossRate >= 5 ? 'text-red-500 font-bold' : 'text-slate-600 dark:text-slate-400 font-medium',
         )}
       >
         {lossRate.toFixed(1)}%
@@ -556,8 +547,8 @@ function GlassBadge({ children, className }: { children: ReactNode; className?: 
       variant="outline"
       className={cn(
         "text-[10px] px-2.5 py-0.5 rounded-full",
-        "bg-white/30 dark:bg-white/5 border-white/60 dark:border-white/10",
-        "text-slate-800 dark:text-slate-200 uppercase tracking-wide",
+        "bg-white/50 dark:bg-white/10 border-white/80 dark:border-white/20",
+        "text-slate-800 dark:text-slate-200 uppercase tracking-wide font-medium",
         className
       )}
     >
@@ -607,7 +598,7 @@ function CostSection({ meta }: { meta: NodeMeta }) {
 
         {meta.expireTime && days != null && (
           <div className="mt-4 px-1">
-            <div className="h-2 w-full rounded-full bg-white/40 dark:bg-slate-800/80 overflow-hidden border border-white/50 dark:border-white/5">
+            <div className="h-2 w-full rounded-full bg-black/5 dark:bg-slate-800/80 overflow-hidden">
               <div
                 className={cn('h-full rounded-full transition-all duration-500', barColor)}
                 style={{ width: `${progress}%` }}
