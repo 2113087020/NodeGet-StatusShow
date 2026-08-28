@@ -100,8 +100,8 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 h-full w-full overflow-hidden flex flex-col bg-soft select-none animate-in fade-in duration-150">
-      {/* 顶部纯悬浮导航栏：不占位，内容从底下穿过 */}
-      <div className="fixed top-0 inset-x-0 z-30 w-full px-4 sm:px-6 pt-3.5 pb-2 pointer-events-none">
+      {/* 顶部悬浮导航：px-6 sm:px-8 收窄边距 */}
+      <div className="fixed top-0 inset-x-0 z-30 w-full px-6 sm:px-8 pt-3.5 pb-2 pointer-events-none">
         <div className="max-w-7xl mx-auto flex items-center gap-3">
           {/* 左侧：返回悬浮球 */}
           <Button 
@@ -149,7 +149,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
         </div>
       </div>
 
-      {/* 唯一独立滚动容器：锁死视口，绝不触发浏览器上滑与回弹 */}
+      {/* 独立滚动内容区域 */}
       <div 
         ref={scrollRef}
         className="flex-1 w-full overflow-y-auto overscroll-contain"
