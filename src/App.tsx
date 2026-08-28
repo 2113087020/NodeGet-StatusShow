@@ -162,7 +162,7 @@ export function App() {
 
   if (configError) {
     return (
-      <div className="h-full flex items-center justify-center p-8">
+      <div className="h-full w-full flex items-center justify-center p-8">
         <Alert variant="destructive" className="max-w-lg">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>加载 config.json 失败</AlertTitle>
@@ -174,7 +174,7 @@ export function App() {
 
   if (!config) {
     return (
-      <div className="h-full flex items-center justify-center text-muted-foreground">
+      <div className="h-full w-full flex items-center justify-center text-muted-foreground">
         加载中…
       </div>
     )
@@ -185,8 +185,10 @@ export function App() {
   const hasErrors = errors.length > 0
 
   return (
-    <div className="fixed inset-0 h-full w-full overflow-y-auto overscroll-none flex flex-col">
+    <div className="fixed inset-0 h-full w-full overflow-hidden flex flex-col select-none">
       <Background />
+      
+      {/* 顶部导航 */}
       <Navbar
         siteName={config.user_preferences.site_name || '你没设置'}
         logo={logo}
@@ -196,69 +198,73 @@ export function App() {
         onView={setView}
         sort={sort}
         onSort={setSort}
+        hidden={Boolean(selected)}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        {!empty && (
-          <RegionFilter
-            regions={regions.list}
-            total={regions.total}
-            active={activeRegion}
-            onChange={setActiveRegion}
-          />
-        )}
-        {!empty && <TagFilter tags={allTags} active={activeTag} onChange={setActiveTag} />}
+      {/* 唯一滚动区域：只有中间列表滚动，绝不带动整页和浏览器 */}
+      <div className="flex-1 w-full overflow-y-auto overscroll-contain">
+        <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 pt-3.5 pb-28 space-y-6">
+          {!empty && (
+            <RegionFilter
+              regions={regions.list}
+              total={regions.total}
+              active={activeRegion}
+              onChange={setActiveRegion}
+            />
+          )}
+          {!empty && <TagFilter tags={allTags} active={activeTag} onChange={setActiveTag} />}
 
-        {empty && !hasErrors && (
-          <div className="py-24 flex flex-col items-center gap-3 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="text-sm">连接后端中…</span>
-          </div>
-        )}
+          {empty && !hasErrors && (
+            <div className="py-24 flex flex-col items-center gap-3 text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="text-sm">连接后端中…</span>
+            </div>
+          )}
 
-        {empty && hasErrors && (
-          <div className="py-20 text-center text-muted-foreground">暂无节点</div>
-        )}
+          {empty && hasErrors && (
+            <div className="py-20 text-center text-muted-foreground">暂无节点</div>
+          )}
 
-        {!empty && view === 'cards' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {list.map(n => (
-              <NodeCard key={n.uuid} node={n} />
-            ))}
-          </div>
-        )}
-        {!empty && view === 'table' && <NodeTable nodes={list} onOpen={setSelected} />}
-        {!empty && view === 'map' && (
-          <Suspense
-            fallback={
-              <div className="py-24 flex items-center justify-center text-sm text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin mr-2" /> 加载地图中…
-              </div>
-            }
-          >
-            <WorldMap nodes={list} onOpen={setSelected} />
-          </Suspense>
-        )}
+          {!empty && view === 'cards' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {list.map(n => (
+                <NodeCard key={n.uuid} node={n} />
+              ))}
+            </div>
+          )}
+          {!empty && view === 'table' && <NodeTable nodes={list} onOpen={setSelected} />}
+          {!empty && view === 'map' && (
+            <Suspense
+              fallback={
+                <div className="py-24 flex items-center justify-center text-sm text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" /> 加载地图中…
+                </div>
+              }
+            >
+              <WorldMap nodes={list} onOpen={setSelected} />
+            </Suspense>
+          )}
 
-        {hasErrors && (
-          <Alert variant="warning">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>{errors.length} 个后端错误</AlertTitle>
-            <AlertDescription>
-              <ul className="list-disc pl-5 space-y-1 mt-2">
-                {errors.map((e, i) => (
-                  <li key={i}>
-                    <b>{e.source}</b>：
-                    {e.error instanceof Error ? e.error.message : String(e.error)}
-                  </li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
-      </main>
+          {hasErrors && (
+            <Alert variant="warning">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>{errors.length} 个后端错误</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc pl-5 space-y-1 mt-2">
+                  {errors.map((e, i) => (
+                    <li key={i}>
+                      <b>{e.source}</b>：
+                      {e.error instanceof Error ? e.error.message : String(e.error)}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
 
-      <Footer text={config.user_preferences.footer} repo={config.repository} dist_page={config.dist_page}/>
+          <Footer text={config.user_preferences.footer} repo={config.repository} dist_page={config.dist_page}/>
+        </main>
+      </div>
 
       <NodeDetail
         node={selectedNode}
