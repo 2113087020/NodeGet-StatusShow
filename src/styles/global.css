@@ -93,7 +93,7 @@
   background-attachment: fixed;
 }
 
-/* 物理级折射液态玻璃透镜 */
+/* 核心折射液态透镜类 */
 .liquid-lens {
   background: rgba(255, 255, 255, 0.45);
   backdrop-filter: url(#liquid-refract) blur(10px) brightness(1.06);
