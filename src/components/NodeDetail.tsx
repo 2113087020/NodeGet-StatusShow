@@ -101,9 +101,9 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
   return (
     <div
       ref={scrollRef}
-      className="fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-150 bg-soft"
+      className="fixed inset-0 z-50 h-full w-full overflow-y-auto overscroll-contain animate-in fade-in duration-150 bg-soft"
     >
-      {/* 顶部独立透镜悬浮栏：与主页完全统一的 max-w-7xl 和边距 */}
+      {/* 顶部独立透镜悬浮栏 */}
       <div className="sticky top-0 z-20 w-full px-4 sm:px-6 pt-3.5 pb-1 pointer-events-none">
         <div className="max-w-7xl mx-auto flex items-center gap-3 pointer-events-auto">
           {/* 左侧：独立高光折射玻璃球 */}
@@ -152,7 +152,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-16 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-24 space-y-6">
         <Section title="资源状态">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-6 gap-x-4 py-2">
             <Ring label="CPU" value={u.cpu} sub={loadAvg ?? undefined} />
