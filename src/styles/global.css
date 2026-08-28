@@ -51,13 +51,20 @@
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
   }
-  html, body {
-    min-height: 100dvh;
+  html {
+    background-color: #e2e8f0;
+    min-height: 100%;
+  }
+  html.dark {
+    background-color: #0b0f19;
+  }
+  body {
+    min-height: 100%;
     margin: 0;
     padding: 0;
+    padding-bottom: env(safe-area-inset-bottom, 20px);
     @apply bg-soft text-foreground font-sans;
     -webkit-font-smoothing: antialiased;
-    overscroll-behavior-y: none; /* 防止页面下拉回弹露出浏览器底色 */
   }
   *::-webkit-scrollbar {
     width: 10px;
@@ -85,8 +92,9 @@
     radial-gradient(at 50% 50%, rgba(168, 85, 247, 0.45) 0px, transparent 60%),
     radial-gradient(at 0% 100%, rgba(52, 211, 153, 0.45) 0px, transparent 55%),
     radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.6) 0px, transparent 55%);
+  background-repeat: no-repeat;
+  background-size: cover;
   background-attachment: fixed;
-  background-size: 100% 100dvh;
 }
 
 .dark .bg-soft {
@@ -95,11 +103,12 @@
     radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.28) 0px, transparent 50%),
     radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.25) 0px, transparent 50%),
     radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.25) 0px, transparent 50%);
+  background-repeat: no-repeat;
+  background-size: cover;
   background-attachment: fixed;
-  background-size: 100% 100dvh;
 }
 
-/* 核心折射液态透镜类 */
+/* 物理级折射液态玻璃透镜 */
 .liquid-lens {
   background: rgba(255, 255, 255, 0.45);
   backdrop-filter: url(#liquid-refract) blur(10px) brightness(1.06);
