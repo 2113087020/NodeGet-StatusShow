@@ -61,7 +61,8 @@ export function SortMenu({ value, onChange }: { value: Sort; onChange: (v: Sort)
             if (!open) setShow(false)
           }}
           className={cn(
-            "pointer-events-auto absolute right-0 top-full mt-2 w-36 min-w-[9rem] max-w-[calc(100vw-2rem)] origin-top-right z-50 p-1.5 rounded-2xl liquid-lens shadow-[0_12px_32px_rgba(0,0,0,0.12)] fill-mode-forwards",
+            "pointer-events-auto absolute right-0 top-full mt-2 w-36 min-w-[9rem] origin-top-right z-50 p-1.5 rounded-2xl border shadow-[0_12px_32px_rgba(0,0,0,0.15)] fill-mode-forwards",
+            "bg-white/40 dark:bg-slate-900/45 backdrop-blur-md border-white/70 dark:border-white/15",
             "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
             "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
           )}
