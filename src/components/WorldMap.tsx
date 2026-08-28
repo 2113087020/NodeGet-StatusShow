@@ -6,32 +6,43 @@ import { Flag } from './Flag'
 import { StatusDot } from './StatusDot'
 import { bytes, pct } from '../utils/format'
 import { deriveUsage, displayName, distroLogo } from '../utils/derive'
-import { cn } from '../utils/cn'
 import type { Node } from '../types'
 
-const MAP_W = 900
-const MAP_H = 480
+const MAP_W = 800
+const MAP_H = 500
 const GEO_URL = `${import.meta.env.BASE_URL}world.geo.json`
 
 const cnameMap = new Map<string, string>()
 const knownA2 = new Set<string>()
 let mapPromise: Promise<void> | null = null
 
-// 代表性区域经纬度坐标
+// 优化后的基准坐标
 const REGION_COORDS: Record<string, [number, number]> = {
-  US: [-98.5795, 39.8283],
-  HK: [114.1694, 22.3193],
-  JP: [139.6917, 35.6895],
-  TW: [121.5654, 25.033],
+  US: [-98.5795, 38.8283],
+  HK: [114.1694, 21.0],
+  JP: [141.5, 38.0],
+  TW: [122.8, 24.0],
   SG: [103.8198, 1.3521],
+  CN: [104.1954, 35.8617],
   DE: [10.4515, 51.1657],
   NL: [5.2913, 52.1326],
   GB: [-3.436, 55.3781],
   FR: [2.2137, 46.2276],
   CA: [-106.3468, 56.1304],
   AU: [133.7751, -25.2744],
-  KR: [127.7669, 35.9078],
-  CN: [104.1954, 35.8617],
+  KR: [128.5, 36.5],
+}
+
+// 针对密集区域的标签独立朝向与偏移，杜绝文字重叠
+const LABEL_LAYOUT: Record<string, { position: any; offset?: [number, number] }> = {
+  US: { position: 'top', offset: [0, -2] },
+  DE: { position: 'top', offset: [0, -2] },
+  NL: { position: 'left', offset: [-4, 0] },
+  CN: { position: 'left', offset: [-6, -4] },
+  JP: { position: 'right', offset: [4, 0] },
+  HK: { position: 'bottom', offset: [-10, 4] },
+  TW: { position: 'right', offset: [6, 4] },
+  SG: { position: 'bottom', offset: [-12, 6] },
 }
 
 interface CountryEntry {
@@ -84,7 +95,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
     }
   }, [])
 
-  // 按国家/地区聚类
   const { byCountry, totalOnline, totalNodes, topRegionA2 } = useMemo(() => {
     const map = new Map<string, CountryEntry>()
     let totalOnline = 0
@@ -104,7 +114,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
       map.set(a2, e)
     }
 
-    // 找出节点最多的区域作为默认选中
     let maxCount = -1
     let topA2 = 'US'
     for (const [a2, e] of map.entries()) {
@@ -117,7 +126,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
     return { byCountry: map, totalOnline, totalNodes, topRegionA2: topA2 }
   }, [nodes])
 
-  // 默认选中节点数最多的地区
   useEffect(() => {
     if (!selectedA2 && topRegionA2) {
       setSelectedA2(topRegionA2)
@@ -131,7 +139,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
     liveRef.current = { byCountry, onOpen, setSelectedA2 }
   })
 
-  // 构建 ECharts 配置
   const option = useMemo(() => {
     const activeA2List = Array.from(byCountry.keys())
 
@@ -147,13 +154,15 @@ export function WorldMap({ nodes, onOpen }: Props) {
       }
     }
 
-    // 信标散点
+    // 独立错位散点信标
     const scatterData = activeA2List
       .map(a2 => {
         const coord = REGION_COORDS[a2]
         const e = byCountry.get(a2)
         if (!coord || !e) return null
         const isSelected = a2 === selectedA2
+        const layout = LABEL_LAYOUT[a2] || { position: 'top', offset: [0, -2] }
+
         return {
           name: a2,
           value: [...coord, e.online + e.offline],
@@ -167,15 +176,16 @@ export function WorldMap({ nodes, onOpen }: Props) {
           label: {
             show: true,
             formatter: `${a2} · ${e.online + e.offline}`,
-            position: 'top',
-            distance: 6,
-            backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.9)' : 'rgba(255, 255, 255, 0.85)',
-            borderColor: isSelected ? '#93c5fd' : 'rgba(255, 255, 255, 0.9)',
+            position: layout.position,
+            offset: layout.offset,
+            distance: 5,
+            backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.95)' : 'rgba(255, 255, 255, 0.9)',
+            borderColor: isSelected ? '#93c5fd' : 'rgba(255, 255, 255, 0.95)',
             borderWidth: 1,
-            borderRadius: 8,
-            padding: [3, 6],
+            borderRadius: 6,
+            padding: [2, 5],
             color: isSelected ? '#ffffff' : '#1e293b',
-            fontSize: 9,
+            fontSize: 8.5,
             fontWeight: 'bold',
           },
         }
@@ -187,9 +197,9 @@ export function WorldMap({ nodes, onOpen }: Props) {
       geo: {
         map: 'world',
         roam: false,
-        zoom: 1.15,
-        layoutCenter: ['50%', '50%'],
-        layoutSize: '100%',
+        zoom: 1.35,
+        layoutCenter: ['48%', '50%'],
+        layoutSize: '105%',
         silent: false,
         itemStyle: {
           areaColor: 'rgba(59, 130, 246, 0.12)',
@@ -240,10 +250,10 @@ export function WorldMap({ nodes, onOpen }: Props) {
           zlevel: 2,
           rippleEffect: {
             brushType: 'stroke',
-            scale: 3.5,
+            scale: 3.2,
             period: 4,
           },
-          symbolSize: 10,
+          symbolSize: 9,
           data: scatterData,
         },
       ],
@@ -292,16 +302,16 @@ export function WorldMap({ nodes, onOpen }: Props) {
         </div>
       </div>
 
-      {/* 玻璃地图视口 */}
+      {/* 放大后的高比例地图视口 */}
       <div
         className="relative w-full rounded-2xl border border-white/60 dark:border-white/10 bg-white/20 dark:bg-slate-900/30 backdrop-blur-md overflow-hidden"
         style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}
       >
         <div ref={wrapRef} className="absolute inset-0" />
-        <div className="absolute bottom-2.5 left-3 text-[10px] text-slate-500 dark:text-slate-400 font-medium pointer-events-none">
+        <div className="absolute bottom-2 left-3 text-[10px] text-slate-500 dark:text-slate-400 font-medium pointer-events-none">
           ● 点击任意区域信标联动聚焦详情
         </div>
-        <div className="absolute bottom-2.5 right-3 font-mono text-[10px] font-bold tracking-wider text-blue-600 dark:text-blue-400 uppercase pointer-events-none">
+        <div className="absolute bottom-2 right-3 font-mono text-[10px] font-bold tracking-wider text-blue-600 dark:text-blue-400 uppercase pointer-events-none">
           World Topology
         </div>
       </div>
