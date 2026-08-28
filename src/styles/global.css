@@ -26,11 +26,11 @@
     --radius: 1.25rem;
   }
   .dark {
-    --background: 230 25% 7%;
+    --background: 224 35% 12%;
     --foreground: 0 0% 98%;
-    --card: 230 25% 11%;
+    --card: 224 30% 16%;
     --card-foreground: 0 0% 98%;
-    --popover: 230 25% 11%;
+    --popover: 224 30% 16%;
     --popover-foreground: 0 0% 98%;
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
@@ -63,7 +63,7 @@
     @apply text-foreground font-sans;
   }
   .dark html, .dark body {
-    background-color: #0b0f19;
+    background-color: #111827;
   }
 }
 
@@ -77,15 +77,18 @@
     radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.6) 0px, transparent 55%);
 }
 
+/* 更明显、绚丽且更亮的深色背景光效 */
 .dark .bg-soft {
-  background-color: #0b0f19;
+  background-color: #0f172a;
   background-image:
-    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.28) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.25) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.25) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.5) 0px, transparent 60%),
+    radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.45) 0px, transparent 60%),
+    radial-gradient(at 50% 50%, rgba(147, 51, 234, 0.4) 0px, transparent 65%),
+    radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.35) 0px, transparent 60%),
+    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.45) 0px, transparent 60%);
 }
 
-/* 更通透清爽的半透明毛玻璃 */
+/* 半透明毛玻璃胶囊 */
 .liquid-lens {
   position: relative;
   isolation: isolate;
@@ -100,12 +103,12 @@
 }
 
 .dark .liquid-lens {
-  background-color: rgba(15, 23, 42, 0.45) !important;
+  background-color: rgba(30, 41, 59, 0.5) !important;
   -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
   backdrop-filter: blur(16px) saturate(160%) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
   box-shadow: 
     0 8px 24px -4px rgba(0, 0, 0, 0.35),
-    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.25),
     inset 0 -1px 2px 0 rgba(0, 0, 0, 0.3);
 }
