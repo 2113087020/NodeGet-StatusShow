@@ -101,10 +101,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
   return (
     <div
       ref={scrollRef}
-      className={cn(
-        "fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-150",
-        "bg-slate-900/15 dark:bg-black/45 backdrop-blur-[3px]"
-      )}
+      className="fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-150 bg-soft"
     >
       {/* 顶部独立透镜悬浮栏 */}
       <div className="sticky top-0 z-20 w-full px-3 sm:px-6 pt-3 pb-2 pointer-events-none">
