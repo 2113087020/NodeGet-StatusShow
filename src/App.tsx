@@ -162,7 +162,7 @@ export function App() {
 
   if (configError) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-8">
+      <div className="h-full flex items-center justify-center p-8">
         <Alert variant="destructive" className="max-w-lg">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>加载 config.json 失败</AlertTitle>
@@ -174,7 +174,7 @@ export function App() {
 
   if (!config) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+      <div className="h-full flex items-center justify-center text-muted-foreground">
         加载中…
       </div>
     )
@@ -185,7 +185,7 @@ export function App() {
   const hasErrors = errors.length > 0
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="fixed inset-0 h-full w-full overflow-y-auto overscroll-none flex flex-col">
       <Background />
       <Navbar
         siteName={config.user_preferences.site_name || '你没设置'}
