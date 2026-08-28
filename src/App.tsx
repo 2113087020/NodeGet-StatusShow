@@ -188,7 +188,7 @@ export function App() {
     <div className="fixed inset-0 h-full w-full overflow-hidden flex flex-col select-none">
       <Background />
       
-      {/* 顶部导航 */}
+      {/* 顶部悬浮导航 */}
       <Navbar
         siteName={config.user_preferences.site_name || '你没设置'}
         logo={logo}
@@ -201,9 +201,9 @@ export function App() {
         hidden={Boolean(selected)}
       />
 
-      {/* 唯一滚动区域：只有中间列表滚动，绝不带动整页和浏览器 */}
+      {/* 独立滚动区域：顶部留出 pt-20 安全间距，滑动时内容自然从胶囊下方穿过 */}
       <div className="flex-1 w-full overflow-y-auto overscroll-contain">
-        <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 pt-3.5 pb-28 space-y-6">
+        <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 pt-20 pb-28 space-y-6">
           {!empty && (
             <RegionFilter
               regions={regions.list}
