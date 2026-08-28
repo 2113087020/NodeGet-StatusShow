@@ -31,7 +31,7 @@ export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onS
       {/* 顶部独立悬浮导航 */}
       <header className="sticky top-0 z-30 w-full px-4 sm:px-6 pt-3.5 pb-1 pointer-events-none">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          {/* 左上角：大号 Logo 与大号标题胶囊 */}
+          {/* 左上角大号 Logo 与标题胶囊 */}
           <a
             href="./"
             className="pointer-events-auto h-12 px-4 sm:px-5 rounded-full flex items-center gap-3 liquid-lens hover:opacity-95 active:scale-95 transition-all duration-200"
@@ -48,24 +48,24 @@ export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onS
             </span>
           </a>
 
-          {/* 右上角：两个独立的悬浮玻璃球 */}
-          <div className="pointer-events-auto flex items-center gap-2.5">
-            <div className="w-11 h-11 rounded-full flex items-center justify-center liquid-lens active:scale-95 transition-all duration-200">
+          {/* 右上角两个独立悬浮球 */}
+          <div className="pointer-events-auto flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center liquid-lens active:scale-95 transition-all duration-200">
               <SortMenu value={sort} onChange={onSort} />
             </div>
-            <div className="w-11 h-11 rounded-full flex items-center justify-center liquid-lens active:scale-95 transition-all duration-200">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center liquid-lens active:scale-95 transition-all duration-200">
               <ThemeToggle />
             </div>
           </div>
         </div>
       </header>
 
-      {/* 底部悬浮：独立搜索球 + 独立布局切换大胶囊 */}
-      <div className="fixed bottom-5 inset-x-0 z-40 flex justify-center items-center gap-3 px-4 pointer-events-none">
-        {/* 搜索：未展开是独立玻璃球，点击展开为长条输入框 */}
+      {/* 底部悬浮 Dock 栏：搜索球与视图切换胶囊 */}
+      <div className="fixed bottom-6 inset-x-0 z-40 flex justify-center items-center gap-4 px-4 pointer-events-none">
+        {/* 独立搜索球 */}
         <div className="pointer-events-auto transition-all duration-300">
           {searchOpen ? (
-            <div className="h-12 px-3 rounded-full flex items-center gap-1.5 liquid-lens shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
+            <div className="h-14 px-3.5 rounded-full flex items-center gap-1.5 liquid-lens shadow-[0_12px_32px_rgba(0,0,0,0.14)]">
               <Search
                 ref={inputRef}
                 value={query}
@@ -76,7 +76,7 @@ export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onS
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-full text-slate-600 dark:text-slate-300 hover:bg-white/40"
+                className="h-9 w-9 rounded-full text-slate-600 dark:text-slate-300 hover:bg-white/40"
                 onClick={() => {
                   onQuery('')
                   setSearchOpen(false)
@@ -90,17 +90,17 @@ export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onS
             <Button
               variant="ghost"
               size="icon"
-              className="w-12 h-12 rounded-full liquid-lens text-slate-700 dark:text-slate-200 hover:bg-white/70 active:scale-95 transition-all shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+              className="w-14 h-14 rounded-full liquid-lens text-slate-700 dark:text-slate-200 hover:bg-white/70 active:scale-95 transition-all shadow-[0_10px_28px_rgba(0,0,0,0.1)]"
               onClick={() => setSearchOpen(true)}
               aria-label="搜索"
             >
-              <SearchIcon className="h-5 w-5" />
+              <SearchIcon className="h-6 w-6" />
             </Button>
           )}
         </div>
 
-        {/* 布局切换：三个大号按钮自成一体的液态玻璃胶囊 */}
-        <div className="pointer-events-auto h-12 px-2.5 rounded-full flex items-center liquid-lens shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+        {/* 独立视图切换大胶囊 */}
+        <div className="pointer-events-auto h-14 px-2 rounded-full flex items-center liquid-lens shadow-[0_10px_28px_rgba(0,0,0,0.1)]">
           <ViewToggle value={view} onChange={onView} />
         </div>
       </div>
