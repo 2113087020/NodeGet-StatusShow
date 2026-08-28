@@ -19,32 +19,32 @@ interface Props {
 export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onSort }: Props) {
   return (
     <>
-      {/* 顶部悬浮操作区：与下方卡片统一对齐 px-4 sm:px-6 */}
+      {/* 顶部悬浮操作区：恢复标准 h-12 尺寸 */}
       <header className="sticky top-0 z-30 w-full px-4 sm:px-6 pt-3.5 pb-1 pointer-events-none">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2.5">
-          {/* 左侧：Logo 胶囊 + 紧凑搜索框 */}
-          <div className="flex items-center gap-2 flex-1 min-w-0 pointer-events-auto">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          {/* 左侧：Logo 胶囊 + 紧凑短搜索框 */}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0 pointer-events-auto">
             <a
               href="./"
-              className="h-11 px-3 sm:px-4 rounded-full flex items-center gap-2.5 liquid-lens shrink-0 hover:opacity-95 active:scale-95 transition-all duration-200"
+              className="h-12 px-4 sm:px-5 rounded-full flex items-center gap-3 liquid-lens shrink-0 hover:opacity-95 active:scale-95 transition-all duration-200"
             >
               {logo ? (
-                <img src={logo} alt="" className="w-6 h-6 rounded object-contain drop-shadow-sm shrink-0" />
+                <img src={logo} alt="" className="w-7 h-7 rounded-lg object-contain drop-shadow-sm shrink-0" />
               ) : (
-                <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-400/40 flex items-center justify-center font-bold text-xs shrink-0">
+                <div className="w-7 h-7 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-400/40 flex items-center justify-center font-bold text-sm shrink-0">
                   {siteName.slice(0, 1)}
                 </div>
               )}
-              <span className="font-bold text-sm text-slate-800 dark:text-slate-100 tracking-tight truncate">
+              <span className="font-bold text-base text-slate-800 dark:text-slate-100 tracking-tight truncate">
                 {siteName}
               </span>
             </a>
 
-            {/* 精准控制宽度的搜索框，与整体卡片边缘完全对齐 */}
-            <div className="flex-1 min-w-[100px] max-w-[180px] sm:max-w-xs h-11 px-3 rounded-full flex items-center gap-1.5 liquid-lens">
-              <SearchIcon className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+            {/* 调短的独立搜索条 */}
+            <div className="w-32 sm:w-48 h-12 px-3 rounded-full flex items-center gap-2 liquid-lens shrink-0">
+              <SearchIcon className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
               <input
-                type="search"
+                type="text"
                 name="site-search"
                 id="site-search"
                 value={query}
@@ -58,25 +58,25 @@ export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onS
                 data-1p-ignore="true"
                 data-lpignore="true"
                 data-bwignore="true"
-                className="w-full bg-transparent text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border-none outline-none"
+                className="w-full bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border-none outline-none min-w-0"
               />
               {query && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-5 w-5 shrink-0 rounded-full text-slate-500 hover:bg-white/40"
+                  className="h-6 w-6 shrink-0 rounded-full text-slate-500 hover:bg-white/40 active:scale-95"
                   onClick={() => onQuery('')}
                   aria-label="清空"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3.5 w-3.5" />
                 </Button>
               )}
             </div>
           </div>
 
-          {/* 右上角：排序按钮（尺寸与标题栏严格呼应） */}
+          {/* 右上角：恢复原本大小的独立排序球 */}
           <div className="pointer-events-auto shrink-0">
-            <div className="w-11 h-11 rounded-full flex items-center justify-center liquid-lens active:scale-95 transition-all duration-200">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center liquid-lens active:scale-95 transition-all duration-200">
               <SortMenu value={sort} onChange={onSort} />
             </div>
           </div>
