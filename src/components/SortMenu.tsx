@@ -61,7 +61,8 @@ export function SortMenu({ value, onChange }: { value: Sort; onChange: (v: Sort)
             if (!open) setShow(false)
           }}
           className={cn(
-            "absolute right-0 top-full mt-2 w-36 origin-top-right z-50 p-1.5 rounded-2xl liquid-lens shadow-[0_12px_32px_rgba(0,0,0,0.12)] fill-mode-forwards",
+            "pointer-events-auto absolute right-0 top-full mt-2 w-36 min-w-[9rem] max-w-[calc(100vw-2rem)] origin-top-right z-50 p-1.5 rounded-2xl border shadow-2xl fill-mode-forwards",
+            "bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/80 dark:border-white/20",
             "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
             "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
           )}
@@ -78,14 +79,14 @@ export function SortMenu({ value, onChange }: { value: Sort; onChange: (v: Sort)
                     setOpen(false)
                   }}
                   className={cn(
-                    "w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-xl transition-all duration-150 cursor-pointer",
+                    "w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-xl whitespace-nowrap transition-all duration-150 cursor-pointer",
                     active
-                      ? "bg-white/70 dark:bg-white/20 text-blue-600 dark:text-blue-400 font-semibold shadow-sm"
-                      : "text-slate-700 dark:text-slate-300 hover:bg-white/40 dark:hover:bg-white/10"
+                      ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold shadow-sm"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/10"
                   )}
                 >
                   <span>{o.label}</span>
-                  {active && <Check className="h-3.5 w-3.5" />}
+                  {active && <Check className="h-3.5 w-3.5 ml-2 shrink-0 stroke-[2.5]" />}
                 </button>
               )
             })}
