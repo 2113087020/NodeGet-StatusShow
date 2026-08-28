@@ -254,12 +254,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
         style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}
       >
         <div ref={wrapRef} className="absolute inset-0" />
-        <div className="absolute bottom-2 left-3 text-[10px] text-slate-500 dark:text-slate-400 font-medium pointer-events-none">
-          ● 点击信标聚焦，点击空白显示全部
-        </div>
-        <div className="absolute bottom-2 right-3 font-mono text-[10px] font-bold tracking-wider text-blue-600 dark:text-blue-400 uppercase pointer-events-none">
-          World View
-        </div>
       </div>
 
       {/* 下方联动区域抽屉 */}
