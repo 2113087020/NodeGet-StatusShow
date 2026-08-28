@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Search as SearchIcon, X } from 'lucide-react'
-import { Search } from './Search'
 import { ViewToggle } from './ViewToggle'
 import { ThemeToggle } from './ThemeToggle'
 import { SortMenu } from './SortMenu'
 import { Button } from './ui/button'
-import { cn } from '../utils/cn'
 import type { Sort, View } from '../types'
 
 interface Props {
@@ -66,16 +64,26 @@ export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onS
       {/* 底部悬浮 Dock 栏 */}
       <div className="fixed bottom-6 inset-x-0 z-40 flex justify-center items-center px-4 pointer-events-none">
         <div className="flex items-center gap-4 max-w-full">
-          {/* 搜索展开模式：全宽显示，不挤压其他按钮 */}
+          {/* 搜索展开模式 */}
           {searchOpen ? (
             <div className="pointer-events-auto h-14 w-[85vw] max-w-md px-4 rounded-full flex items-center gap-2 liquid-lens shadow-[0_12px_32px_rgba(0,0,0,0.15)] animate-in fade-in zoom-in-95 duration-200">
               <SearchIcon className="h-5 w-5 text-slate-500 dark:text-slate-400 shrink-0" />
               <input
                 ref={inputRef}
-                type="text"
+                type="search"
+                name="site-search"
+                id="site-search"
                 value={query}
                 onChange={e => onQuery(e.target.value)}
                 placeholder="搜索节点状态..."
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-form-type="other"
+                data-1p-ignore="true"
+                data-lpignore="true"
+                data-bwignore="true"
                 className="flex-1 min-w-0 bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border-none outline-none"
               />
               <Button
