@@ -103,27 +103,27 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
       ref={scrollRef}
       className="fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-150 bg-soft"
     >
-      {/* 顶部独立透镜悬浮栏 */}
-      <div className="sticky top-0 z-20 w-full px-3 sm:px-6 pt-3 pb-2 pointer-events-none">
-        <div className="max-w-5xl mx-auto flex items-center gap-2 sm:gap-3 pointer-events-auto">
+      {/* 顶部独立透镜悬浮栏：与主页完全统一的 max-w-7xl 和边距 */}
+      <div className="sticky top-0 z-20 w-full px-4 sm:px-6 pt-3.5 pb-1 pointer-events-none">
+        <div className="max-w-7xl mx-auto flex items-center gap-3 pointer-events-auto">
           {/* 左侧：独立高光折射玻璃球 */}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onClose} 
             aria-label="返回" 
-            className="w-11 h-11 rounded-full shrink-0 liquid-lens active:scale-95 transition-all duration-200"
+            className="w-12 h-12 rounded-full shrink-0 liquid-lens active:scale-95 transition-all duration-200"
           >
             <ArrowLeft className="h-5 w-5 text-slate-800 dark:text-slate-100" />
           </Button>
 
           {/* 右侧：长条液态透镜胶囊 */}
-          <div className="flex-1 min-w-0 h-11 px-4 sm:px-5 rounded-full flex items-center gap-2.5 sm:gap-3.5 liquid-lens">
+          <div className="flex-1 min-w-0 h-12 px-4 sm:px-5 rounded-full flex items-center gap-2.5 sm:gap-3.5 liquid-lens">
             <StatusDot online={node.online} />
             {logo && (
               <img src={logo} alt="" className="w-5 h-5 shrink-0 object-contain drop-shadow-sm" loading="lazy" />
             )}
-            <span className="font-semibold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate min-w-0 tracking-tight">
+            <span className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate min-w-0 tracking-tight">
               {displayName(node)}
             </span>
             <Flag code={node.meta?.region} className="shrink-0" />
@@ -152,7 +152,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-3 pb-12 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-16 space-y-6">
         <Section title="资源状态">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-6 gap-x-4 py-2">
             <Ring label="CPU" value={u.cpu} sub={loadAvg ?? undefined} />
@@ -348,7 +348,7 @@ interface SparkProps {
 function Spark({ data, dataKey, label, stroke, domain, format, isDark }: SparkProps) {
   const last = Number(data.at(-1)?.[dataKey] ?? 0)
   const id = `g-${dataKey}`
-  const tooltipStyle = isDark ? DARK_TOOLTIP_STYLE : TOOLTIP_STYLE;
+  const tooltipStyle = isDark ? DARK_TOOLTIP_STYLE : TOOLTIP_STYLE
 
   return (
     <div className="rounded-2xl p-4 transition-all bg-white/40 dark:bg-white/5 border border-white/80 dark:border-white/10 shadow-inner">
@@ -403,7 +403,7 @@ function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps)
   const stats = useMemo(() => computeLatencyStats(rows, type), [rows, type])
   const [hidden, setHidden] = useState<Set<string>>(() => new Set())
   const empty = data.length === 0
-  const tooltipStyle = isDark ? DARK_TOOLTIP_STYLE : TOOLTIP_STYLE;
+  const tooltipStyle = isDark ? DARK_TOOLTIP_STYLE : TOOLTIP_STYLE
 
   const visibleSeries = series.filter(s => !hidden.has(s.name))
 
