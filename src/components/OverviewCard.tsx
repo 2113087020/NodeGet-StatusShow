@@ -45,7 +45,7 @@ export function OverviewCard({ nodes }: Props) {
   if (stats.total === 0) return null
 
   return (
-    <Card className="px-4 py-3 sm:px-6 sm:py-3.5 rounded-2xl liquid-lens select-none">
+    <Card className="px-4 py-3.5 sm:px-6 sm:py-4 rounded-3xl liquid-lens select-none">
       <div className="grid grid-cols-3 divide-x divide-black/5 dark:divide-white/10">
         
         {/* 1. 节点状态 */}
