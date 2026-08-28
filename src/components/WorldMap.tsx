@@ -5,6 +5,7 @@ import { Card } from './ui/card'
 import { Flag } from './Flag'
 import { StatusDot } from './StatusDot'
 import { displayName, distroLogo } from '../utils/derive'
+import { cn } from '../utils/cn'
 import type { Node } from '../types'
 
 const MAP_W = 900
@@ -200,13 +201,15 @@ export function WorldMap({ nodes, onOpen }: Props) {
   const renderEntry = renderA2 ? byCountry.get(renderA2) ?? null : null
 
   return (
-    <Card className="p-3 sm:p-4">
-      <div className="flex items-center mb-3 px-1">
-        <div className="text-sm font-semibold text-foreground/90">地理位置</div>
+    <Card className="p-4 sm:p-6 rounded-3xl liquid-lens">
+      <div className="flex items-center mb-4 px-1">
+        <div className="text-xs uppercase tracking-wider font-semibold text-slate-700 dark:text-slate-300">
+          地理位置
+        </div>
       </div>
 
       <div
-        className="relative w-full overflow-hidden rounded-md border border-border/60 bg-[hsl(220_15%_8%)]"
+        className="relative w-full overflow-hidden rounded-2xl border border-white/60 dark:border-white/10 bg-slate-900/80 dark:bg-slate-950/70 backdrop-blur-md shadow-inner"
         style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}
       >
         <div ref={wrapRef} className="absolute inset-0" />
@@ -238,7 +241,7 @@ export function WorldMap({ nodes, onOpen }: Props) {
           />
         )}
 
-        <div className="absolute bottom-3 right-4 z-10 font-mono text-sm font-semibold tracking-wider text-white/85 pointer-events-none uppercase">
+        <div className="absolute bottom-3 right-4 z-10 font-mono text-xs font-semibold tracking-wider text-white/70 pointer-events-none uppercase">
           {total} nodes
         </div>
       </div>
@@ -282,22 +285,23 @@ function buildOption(byCountry: Map<string, CountryEntry>) {
       seriesIndex: 0,
       left: 16,
       bottom: 16,
-      itemWidth: 10,
-      itemHeight: 90,
+      itemWidth: 8,
+      itemHeight: 80,
       orient: 'horizontal' as const,
       text: ['多', '少'],
-      textStyle: { color: 'rgba(255,255,255,0.55)', fontSize: 10 },
+      textStyle: { color: 'rgba(255,255,255,0.6)', fontSize: 10 },
       inRange: { color: ['#fed7aa', '#fb923c', '#c2410c'] },
       outOfRange: { color: 'rgba(148,163,184,0.16)' },
       calculable: false,
     },
     tooltip: {
       trigger: 'item' as const,
-      backgroundColor: 'rgba(20,22,28,0.94)',
-      borderColor: 'rgba(148,163,184,0.3)',
+      backgroundColor: 'rgba(15, 23, 42, 0.85)',
+      borderColor: 'rgba(255, 255, 255, 0.15)',
       borderWidth: 1,
-      padding: [6, 10] as [number, number],
-      textStyle: { color: '#e5e7eb', fontSize: 12 },
+      borderRadius: 12,
+      padding: [8, 12] as [number, number],
+      textStyle: { color: '#f8fafc', fontSize: 12 },
       formatter: (p: any) => {
         const a2 = p.name
         const cname = cnameMap.get(a2)
@@ -320,9 +324,9 @@ function buildOption(byCountry: Map<string, CountryEntry>) {
         layoutSize: '100%',
         selectedMode: false,
         itemStyle: {
-          areaColor: 'rgba(148,163,184,0.16)',
-          borderColor: 'rgba(148,163,184,0.32)',
-          borderWidth: 0.4,
+          areaColor: 'rgba(148,163,184,0.14)',
+          borderColor: 'rgba(255,255,255,0.15)',
+          borderWidth: 0.5,
         },
         emphasis: {
           label: { show: false },
@@ -358,24 +362,28 @@ function NodePopover({
   return (
     <div
       data-state={open ? 'open' : 'closed'}
-      className="absolute right-3 top-3 z-20 w-64 rounded-lg border border-border bg-popover text-popover-foreground shadow-xl overflow-hidden origin-top-right duration-150 fill-mode-forwards data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+      className={cn(
+        "absolute right-3 top-3 z-20 w-64 rounded-2xl liquid-lens shadow-2xl overflow-hidden origin-top-right duration-150 fill-mode-forwards",
+        "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+      )}
       onClick={e => e.stopPropagation()}
       onMouseDown={e => e.stopPropagation()}
     >
       <div key={a2} className="animate-in fade-in-0 duration-100 fill-mode-forwards">
-        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/70">
-          <Flag code={a2} className="shrink-0" />
+        <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-white/60 dark:border-white/10">
+          <Flag code={a2} className="shrink-0 drop-shadow-sm" />
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold truncate leading-tight">{cname}</div>
-            <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
-              <span className="text-emerald-500">{entry.online} 在线</span>
-              {entry.offline > 0 && <span className="ml-2">{entry.offline} 离线</span>}
+            <div className="text-sm font-bold truncate leading-tight text-slate-900 dark:text-slate-100">{cname}</div>
+            <div className="text-[11px] font-mono mt-0.5">
+              <span className="text-emerald-500 font-semibold">{entry.online} 在线</span>
+              {entry.offline > 0 && <span className="ml-2 text-slate-500 dark:text-slate-400">{entry.offline} 离线</span>}
             </div>
           </div>
           <button
             onClick={onClose}
             aria-label="关闭"
-            className="-mr-1 h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent shrink-0"
+            className="-mr-1 h-6 w-6 inline-flex items-center justify-center rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/40 dark:hover:bg-white/10 shrink-0 transition-colors"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -387,19 +395,19 @@ function NodePopover({
               <button
                 key={n.uuid}
                 onClick={() => onPick(n.uuid)}
-                className="group w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent text-left transition-colors"
+                className="group w-full flex items-center gap-2 px-3.5 py-1.5 text-xs hover:bg-white/50 dark:hover:bg-white/10 text-left transition-colors"
               >
-                <StatusDot online={n.online} className="w-1.5 h-1.5 ring-1" />
+                <StatusDot online={n.online} className="w-1.5 h-1.5" />
                 {logo && (
                   <img
                     src={logo}
                     alt=""
-                    className="w-3.5 h-3.5 shrink-0 object-contain opacity-80"
+                    className="w-3.5 h-3.5 shrink-0 object-contain drop-shadow-sm"
                     loading="lazy"
                   />
                 )}
-                <span className="truncate flex-1 text-foreground/90">{displayName(n)}</span>
-                <ChevronRight className="h-3 w-3 text-muted-foreground/40 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+                <span className="truncate flex-1 text-slate-800 dark:text-slate-200 font-medium">{displayName(n)}</span>
+                <ChevronRight className="h-3 w-3 text-slate-400 dark:text-slate-500 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-700 dark:group-hover:text-slate-300" />
               </button>
             )
           })}
