@@ -100,8 +100,8 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 h-full w-full overflow-hidden flex flex-col bg-soft select-none animate-in fade-in duration-150">
-      {/* 顶部悬浮导航：px-6 sm:px-8 收窄边距 */}
-      <div className="fixed top-0 inset-x-0 z-30 w-full px-6 sm:px-8 pt-3.5 pb-2 pointer-events-none">
+      {/* 顶部悬浮导航：px-5 sm:px-7 */}
+      <div className="fixed top-0 inset-x-0 z-30 w-full px-5 sm:px-7 pt-3.5 pb-2 pointer-events-none">
         <div className="max-w-7xl mx-auto flex items-center gap-3">
           {/* 左侧：返回悬浮球 */}
           <Button 
