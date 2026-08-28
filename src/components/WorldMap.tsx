@@ -18,9 +18,9 @@ let mapPromise: Promise<void> | null = null
 
 const REGION_COORDS: Record<string, [number, number]> = {
   US: [-98.5795, 38.8283],
-  HK: [114.1694, 21.0],
-  JP: [141.5, 38.0],
-  TW: [122.8, 24.0],
+  HK: [114.1694, 22.3193],
+  JP: [139.6917, 35.6895],
+  TW: [121.5654, 25.033],
   SG: [103.8198, 1.3521],
   CN: [104.1954, 35.8617],
   DE: [10.4515, 51.1657],
@@ -29,18 +29,7 @@ const REGION_COORDS: Record<string, [number, number]> = {
   FR: [2.2137, 46.2276],
   CA: [-106.3468, 56.1304],
   AU: [133.7751, -25.2744],
-  KR: [128.5, 36.5],
-}
-
-const LABEL_LAYOUT: Record<string, { position: any; offset?: [number, number] }> = {
-  US: { position: 'top', offset: [0, -2] },
-  DE: { position: 'top', offset: [0, -2] },
-  NL: { position: 'left', offset: [-4, 0] },
-  CN: { position: 'left', offset: [-6, -4] },
-  JP: { position: 'right', offset: [4, 0] },
-  HK: { position: 'bottom', offset: [-10, 4] },
-  TW: { position: 'right', offset: [6, 4] },
-  SG: { position: 'bottom', offset: [-12, 6] },
+  KR: [127.7669, 35.9078],
 }
 
 interface CountryEntry {
@@ -145,7 +134,6 @@ export function WorldMap({ nodes, onOpen }: Props) {
         const e = byCountry.get(a2)
         if (!coord || !e) return null
         const isSelected = a2 === selectedA2
-        const layout = LABEL_LAYOUT[a2] || { position: 'top', offset: [0, -2] }
 
         return {
           name: a2,
@@ -158,19 +146,7 @@ export function WorldMap({ nodes, onOpen }: Props) {
             shadowColor: isSelected ? 'rgba(37,99,235,0.6)' : 'rgba(59,130,246,0.35)',
           },
           label: {
-            show: true,
-            formatter: `${a2} · ${e.online + e.offline}`,
-            position: layout.position,
-            offset: layout.offset,
-            distance: 5,
-            backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.95)' : 'rgba(255, 255, 255, 0.9)',
-            borderColor: isSelected ? '#93c5fd' : 'rgba(255, 255, 255, 0.95)',
-            borderWidth: 1,
-            borderRadius: 6,
-            padding: [2, 5],
-            color: isSelected ? '#ffffff' : '#1e293b',
-            fontSize: 8.5,
-            fontWeight: 'bold',
+            show: false,
           },
         }
       })
@@ -216,7 +192,7 @@ export function WorldMap({ nodes, onOpen }: Props) {
             scale: 3.2,
             period: 4,
           },
-          symbolSize: 9,
+          symbolSize: 10,
           data: scatterData,
         },
       ],
