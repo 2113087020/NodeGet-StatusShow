@@ -1,30 +1,42 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as echarts from 'echarts'
-import { AlertTriangle, ChevronRight, X } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { Card } from './ui/card'
 import { Flag } from './Flag'
 import { StatusDot } from './StatusDot'
-import { displayName, distroLogo } from '../utils/derive'
+import { bytes, pct } from '../utils/format'
+import { deriveUsage, displayName, distroLogo } from '../utils/derive'
 import { cn } from '../utils/cn'
 import type { Node } from '../types'
 
 const MAP_W = 900
-const MAP_H = 520
-const TINY_DEG = 2
+const MAP_H = 480
 const GEO_URL = `${import.meta.env.BASE_URL}world.geo.json`
-
-const HEAT = [
-  [254, 215, 170],
-  [251, 146, 60],
-  [194, 65, 12],
-]
 
 const cnameMap = new Map<string, string>()
 const knownA2 = new Set<string>()
-const tinyCenter = new Map<string, [number, number]>()
 let mapPromise: Promise<void> | null = null
 
+// 代表性区域经纬度坐标
+const REGION_COORDS: Record<string, [number, number]> = {
+  US: [-98.5795, 39.8283],
+  HK: [114.1694, 22.3193],
+  JP: [139.6917, 35.6895],
+  TW: [121.5654, 25.033],
+  SG: [103.8198, 1.3521],
+  DE: [10.4515, 51.1657],
+  NL: [5.2913, 52.1326],
+  GB: [-3.436, 55.3781],
+  FR: [2.2137, 46.2276],
+  CA: [-106.3468, 56.1304],
+  AU: [133.7751, -25.2744],
+  KR: [127.7669, 35.9078],
+  CN: [104.1954, 35.8617],
+}
+
 interface CountryEntry {
+  a2: string
+  cname: string
   online: number
   offline: number
   nodes: Node[]
@@ -33,54 +45,6 @@ interface CountryEntry {
 interface Props {
   nodes: Node[]
   onOpen?: (uuid: string) => void
-}
-
-function ringBbox(ring: number[][]) {
-  let minLng = Infinity
-  let maxLng = -Infinity
-  let minLat = Infinity
-  let maxLat = -Infinity
-  for (const [lng, lat] of ring) {
-    if (lng < minLng) minLng = lng
-    if (lng > maxLng) maxLng = lng
-    if (lat < minLat) minLat = lat
-    if (lat > maxLat) maxLat = lat
-  }
-  return { minLng, maxLng, minLat, maxLat, w: maxLng - minLng, h: maxLat - minLat }
-}
-
-function tinyMeta(geometry: any): { center: [number, number]; size: number } | null {
-  if (!geometry?.coordinates) return null
-  const polygons = geometry.type === 'MultiPolygon' ? geometry.coordinates : [geometry.coordinates]
-  let best: ReturnType<typeof ringBbox> | null = null
-  let bestArea = -1
-  for (const poly of polygons) {
-    const outer = poly[0]
-    if (!outer) continue
-    const bb = ringBbox(outer)
-    const area = bb.w * bb.h
-    if (area > bestArea) {
-      bestArea = area
-      best = bb
-    }
-  }
-  if (!best) return null
-  return {
-    center: [(best.minLng + best.maxLng) / 2, (best.minLat + best.maxLat) / 2],
-    size: Math.max(best.w, best.h),
-  }
-}
-
-function heatColor(t: number) {
-  const x = Math.min(1, Math.max(0, t))
-  const seg = x >= 0.5 ? 1 : 0
-  const f = (x - seg * 0.5) * 2
-  const a = HEAT[seg]
-  const b = HEAT[seg + 1]
-  const r = Math.round(a[0] + (b[0] - a[0]) * f)
-  const g = Math.round(a[1] + (b[1] - a[1]) * f)
-  const c = Math.round(a[2] + (b[2] - a[2]) * f)
-  return `rgb(${r},${g},${c})`
 }
 
 function ensureMap() {
@@ -93,8 +57,6 @@ function ensureMap() {
           if (!a2) continue
           knownA2.add(a2)
           if (f.properties?.cname) cnameMap.set(a2, f.properties.cname)
-          const m = tinyMeta(f.geometry)
-          if (m && m.size < TINY_DEG) tinyCenter.set(a2, m.center)
         }
         echarts.registerMap('world', geo)
       })
@@ -108,66 +70,185 @@ function ensureMap() {
 
 export function WorldMap({ nodes, onOpen }: Props) {
   const [ready, setReady] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-  const [pickedA2, setPickedA2] = useState<string | null>(null)
-  const [renderA2, setRenderA2] = useState<string | null>(null)
+  const [selectedA2, setSelectedA2] = useState<string | null>(null)
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<echarts.ECharts | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    ensureMap()
-      .then(() => {
-        if (!cancelled) setReady(true)
-      })
-      .catch(err => {
-        if (!cancelled) setError(err instanceof Error ? err : new Error(String(err)))
-      })
+    ensureMap().then(() => {
+      if (!cancelled) setReady(true)
+    })
     return () => {
       cancelled = true
     }
   }, [])
 
-  useEffect(() => {
-    if (pickedA2) {
-      setRenderA2(pickedA2)
-    } else if (renderA2) {
-      const t = window.setTimeout(() => setRenderA2(null), 160)
-      return () => clearTimeout(t)
-    }
-  }, [pickedA2, renderA2])
-
-  const { byCountry, total } = useMemo(() => {
+  // 按国家/地区聚类
+  const { byCountry, totalOnline, totalNodes, topRegionA2 } = useMemo(() => {
     const map = new Map<string, CountryEntry>()
-    let total = 0
+    let totalOnline = 0
+    let totalNodes = 0
+
     for (const n of nodes) {
       const a2 = n.meta?.region?.trim().toUpperCase()
       if (!a2 || !/^[A-Z]{2}$/.test(a2)) continue
-      total++
-      const e = map.get(a2) || { online: 0, offline: 0, nodes: [] }
+      totalNodes++
+      if (n.online) totalOnline++
+
+      const cname = cnameMap.get(a2) || a2
+      const e = map.get(a2) || { a2, cname, online: 0, offline: 0, nodes: [] }
       if (n.online) e.online++
       else e.offline++
       e.nodes.push(n)
       map.set(a2, e)
     }
-    return { byCountry: map, total }
+
+    // 找出节点最多的区域作为默认选中
+    let maxCount = -1
+    let topA2 = 'US'
+    for (const [a2, e] of map.entries()) {
+      if (e.nodes.length > maxCount) {
+        maxCount = e.nodes.length
+        topA2 = a2
+      }
+    }
+
+    return { byCountry: map, totalOnline, totalNodes, topRegionA2: topA2 }
   }, [nodes])
 
-  const dataSig = useMemo(
-    () =>
-      [...byCountry.entries()]
-        .map(([k, v]) => `${k}:${v.online}/${v.offline}`)
-        .sort()
-        .join(','),
-    [byCountry],
-  )
-
-  const liveRef = useRef({ byCountry, onOpen })
+  // 默认选中节点数最多的地区
   useEffect(() => {
-    liveRef.current = { byCountry, onOpen }
+    if (!selectedA2 && topRegionA2) {
+      setSelectedA2(topRegionA2)
+    }
+  }, [topRegionA2, selectedA2])
+
+  const activeEntry = selectedA2 ? byCountry.get(selectedA2) ?? null : null
+
+  const liveRef = useRef({ byCountry, onOpen, setSelectedA2 })
+  useEffect(() => {
+    liveRef.current = { byCountry, onOpen, setSelectedA2 }
   })
 
-  const option = useMemo(() => buildOption(byCountry, Boolean(pickedA2)), [dataSig, ready, pickedA2])
+  // 构建 ECharts 配置
+  const option = useMemo(() => {
+    const activeA2List = Array.from(byCountry.keys())
+
+    // 拓扑连线
+    const linesData: any[] = []
+    for (let i = 0; i < activeA2List.length; i++) {
+      for (let j = i + 1; j < activeA2List.length; j++) {
+        const c1 = REGION_COORDS[activeA2List[i]]
+        const c2 = REGION_COORDS[activeA2List[j]]
+        if (c1 && c2) {
+          linesData.push({ coords: [c1, c2] })
+        }
+      }
+    }
+
+    // 信标散点
+    const scatterData = activeA2List
+      .map(a2 => {
+        const coord = REGION_COORDS[a2]
+        const e = byCountry.get(a2)
+        if (!coord || !e) return null
+        const isSelected = a2 === selectedA2
+        return {
+          name: a2,
+          value: [...coord, e.online + e.offline],
+          itemStyle: {
+            color: isSelected ? '#2563eb' : '#3b82f6',
+            borderColor: '#ffffff',
+            borderWidth: isSelected ? 2.5 : 1.5,
+            shadowBlur: isSelected ? 16 : 8,
+            shadowColor: isSelected ? 'rgba(37,99,235,0.6)' : 'rgba(59,130,246,0.35)',
+          },
+          label: {
+            show: true,
+            formatter: `${a2} · ${e.online + e.offline}`,
+            position: 'top',
+            distance: 6,
+            backgroundColor: isSelected ? 'rgba(37, 99, 235, 0.9)' : 'rgba(255, 255, 255, 0.85)',
+            borderColor: isSelected ? '#93c5fd' : 'rgba(255, 255, 255, 0.9)',
+            borderWidth: 1,
+            borderRadius: 8,
+            padding: [3, 6],
+            color: isSelected ? '#ffffff' : '#1e293b',
+            fontSize: 9,
+            fontWeight: 'bold',
+          },
+        }
+      })
+      .filter(Boolean)
+
+    return {
+      backgroundColor: 'transparent',
+      geo: {
+        map: 'world',
+        roam: false,
+        zoom: 1.15,
+        layoutCenter: ['50%', '50%'],
+        layoutSize: '100%',
+        silent: false,
+        itemStyle: {
+          areaColor: 'rgba(59, 130, 246, 0.12)',
+          borderColor: 'rgba(96, 165, 250, 0.4)',
+          borderWidth: 0.8,
+        },
+        emphasis: {
+          itemStyle: {
+            areaColor: 'rgba(59, 130, 246, 0.28)',
+            borderColor: '#60a5fa',
+          },
+          label: { show: false },
+        },
+        regions: activeA2List.map(a2 => ({
+          name: a2,
+          itemStyle: {
+            areaColor: a2 === selectedA2 ? 'rgba(37, 99, 235, 0.35)' : 'rgba(59, 130, 246, 0.22)',
+            borderColor: a2 === selectedA2 ? '#2563eb' : '#60a5fa',
+            borderWidth: a2 === selectedA2 ? 1.5 : 1,
+          },
+        })),
+      },
+      series: [
+        {
+          type: 'lines',
+          coordinateSystem: 'geo',
+          zlevel: 1,
+          effect: {
+            show: true,
+            period: 6,
+            trailLength: 0.2,
+            symbol: 'circle',
+            symbolSize: 3,
+            color: '#93c5fd',
+          },
+          lineStyle: {
+            color: '#60a5fa',
+            width: 1,
+            opacity: 0.35,
+            curveness: 0.2,
+            type: 'dashed',
+          },
+          data: linesData,
+        },
+        {
+          type: 'effectScatter',
+          coordinateSystem: 'geo',
+          zlevel: 2,
+          rippleEffect: {
+            brushType: 'stroke',
+            scale: 3.5,
+            period: 4,
+          },
+          symbolSize: 10,
+          data: scatterData,
+        },
+      ],
+    }
+  }, [byCountry, selectedA2])
 
   useEffect(() => {
     if (!ready || !wrapRef.current) return
@@ -175,16 +256,13 @@ export function WorldMap({ nodes, onOpen }: Props) {
       chartRef.current = echarts.init(wrapRef.current)
       chartRef.current.on('click', (p: any) => {
         const cur = liveRef.current
-        const e = cur.byCountry.get(p.name)
-        if (!e) return
-        if (e.nodes.length === 1) cur.onOpen?.(e.nodes[0].uuid)
-        else {
-          chartRef.current?.dispatchAction({ type: 'hideTip' })
-          setPickedA2(p.name)
+        const a2 = p.name || p.data?.name
+        if (a2 && cur.byCountry.has(a2)) {
+          cur.setSelectedA2(a2)
         }
       })
     }
-    chartRef.current.setOption(option, false)
+    chartRef.current.setOption(option, true)
   }, [ready, option])
 
   useEffect(() => {
@@ -201,225 +279,94 @@ export function WorldMap({ nodes, onOpen }: Props) {
     }
   }, [])
 
-  const renderEntry = renderA2 ? byCountry.get(renderA2) ?? null : null
-
   return (
-    <Card className="p-4 sm:p-6 rounded-3xl liquid-lens">
-      <div className="flex items-center mb-4 px-1">
+    <Card className="p-4 sm:p-6 rounded-3xl liquid-lens space-y-4">
+      {/* 顶部标题栏 */}
+      <div className="flex items-center justify-between px-1">
         <div className="text-xs uppercase tracking-wider font-semibold text-slate-700 dark:text-slate-300">
-          地理位置
+          全球节点地理分布
+        </div>
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>{totalOnline} / {totalNodes} 节点在线</span>
         </div>
       </div>
 
-      {/* 地图背景容器 */}
+      {/* 玻璃地图视口 */}
       <div
-        className="relative w-full rounded-2xl border border-white/60 dark:border-white/10 bg-slate-900/80 dark:bg-slate-950/70 backdrop-blur-md shadow-inner"
+        className="relative w-full rounded-2xl border border-white/60 dark:border-white/10 bg-white/20 dark:bg-slate-900/30 backdrop-blur-md overflow-hidden"
         style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}
       >
-        <div ref={wrapRef} className="absolute inset-0 rounded-2xl overflow-hidden" />
-
-        {error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 text-center text-sm text-white/80">
-            <AlertTriangle className="h-5 w-5 text-amber-400" />
-            <div>地图加载失败</div>
-            <div className="text-xs text-white/50 break-all">{error.message}</div>
-          </div>
-        )}
-
-        {!error && ready && total === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-white/55 pointer-events-none">
-            没有节点设置过国家代码
-          </div>
-        )}
-
-        {/* 适配地图边界的自适应弹窗 */}
-        {renderEntry && renderA2 && (
-          <NodePopover
-            a2={renderA2}
-            entry={renderEntry}
-            open={pickedA2 === renderA2}
-            onPick={uuid => {
-              setPickedA2(null)
-              onOpen?.(uuid)
-            }}
-            onClose={() => setPickedA2(null)}
-          />
-        )}
-
-        <div className="absolute bottom-3 right-4 z-10 font-mono text-xs font-semibold tracking-wider text-white/70 pointer-events-none uppercase">
-          {total} nodes
+        <div ref={wrapRef} className="absolute inset-0" />
+        <div className="absolute bottom-2.5 left-3 text-[10px] text-slate-500 dark:text-slate-400 font-medium pointer-events-none">
+          ● 点击任意区域信标联动聚焦详情
+        </div>
+        <div className="absolute bottom-2.5 right-3 font-mono text-[10px] font-bold tracking-wider text-blue-600 dark:text-blue-400 uppercase pointer-events-none">
+          World Topology
         </div>
       </div>
-    </Card>
-  )
-}
 
-function buildOption(byCountry: Map<string, CountryEntry>, hasPicked: boolean) {
-  const entries = [...byCountry.entries()].filter(([a2]) => knownA2.has(a2))
-  const data = entries.map(([a2, e]) => ({ name: a2, value: e.online + e.offline }))
-  const max = data.reduce((m, d) => Math.max(m, d.value), 0)
-  const tinyMarkers = entries
-    .map(([a2, e]) => {
-      const c = tinyCenter.get(a2)
-      if (!c) return null
-      const v = e.online + e.offline
-      const t = max > 0 ? v / max : 0
-      return {
-        name: a2,
-        coord: c,
-        value: v,
-        symbolSize: 6 + Math.min(8, Math.log2(v + 1) * 3),
-        itemStyle: {
-          color: heatColor(0.35 + 0.65 * t),
-          borderColor: 'rgba(20,22,28,0.85)',
-          borderWidth: 0.8,
-          shadowBlur: 8,
-          shadowColor: 'rgba(251,146,60,0.45)',
-        },
-      }
-    })
-    .filter((x): x is NonNullable<typeof x> => x != null)
-
-  return {
-    backgroundColor: 'transparent',
-    visualMap: {
-      type: 'continuous' as const,
-      min: max > 1 ? 1 : 0,
-      max: Math.max(max, 2),
-      show: max > 0,
-      seriesIndex: 0,
-      left: 16,
-      bottom: 16,
-      itemWidth: 8,
-      itemHeight: 80,
-      orient: 'horizontal' as const,
-      text: ['多', '少'],
-      textStyle: { color: 'rgba(255,255,255,0.6)', fontSize: 10 },
-      inRange: { color: ['#fed7aa', '#fb923c', '#c2410c'] },
-      outOfRange: { color: 'rgba(148,163,184,0.16)' },
-      calculable: false,
-    },
-    tooltip: {
-      show: !hasPicked,
-      trigger: 'item' as const,
-      backgroundColor: 'rgba(15, 23, 42, 0.85)',
-      borderColor: 'rgba(255, 255, 255, 0.15)',
-      borderWidth: 1,
-      borderRadius: 12,
-      padding: [8, 12] as [number, number],
-      textStyle: { color: '#f8fafc', fontSize: 12 },
-      formatter: (p: any) => {
-        const a2 = p.name
-        const cname = cnameMap.get(a2)
-        const head = cname ? `${cname} <span style="color:#94a3b8">${a2}</span>` : a2
-        const e = byCountry.get(a2)
-        if (!e) return `<b>${head}</b><br/><span style="color:#94a3b8">无节点</span>`
-        const offline = e.offline
-          ? ` <span style="color:#94a3b8">· ${e.offline} 离线</span>`
-          : ''
-        return `<b>${head}</b><br/>${e.online + e.offline} 节点 <span style="color:#34d399">· ${e.online} 在线</span>${offline}`
-      },
-    },
-    series: [
-      {
-        type: 'map' as const,
-        map: 'world',
-        roam: false,
-        zoom: 1.15,
-        layoutCenter: ['50%', '50%'] as [string, string],
-        layoutSize: '100%',
-        selectedMode: false,
-        itemStyle: {
-          areaColor: 'rgba(148,163,184,0.14)',
-          borderColor: 'rgba(255,255,255,0.15)',
-          borderWidth: 0.5,
-        },
-        emphasis: {
-          label: { show: false },
-          itemStyle: { areaColor: '#fb923c' },
-        },
-        label: { show: false },
-        data,
-        markPoint: {
-          symbol: 'circle',
-          label: { show: false },
-          emphasis: { label: { show: false }, scale: 1.3 },
-          data: tinyMarkers,
-        },
-      },
-    ],
-  }
-}
-
-function NodePopover({
-  a2,
-  entry,
-  open,
-  onPick,
-  onClose,
-}: {
-  a2: string
-  entry: CountryEntry
-  open: boolean
-  onPick: (uuid: string) => void
-  onClose: () => void
-}) {
-  const cname = cnameMap.get(a2) || a2
-  return (
-    <div
-      data-state={open ? 'open' : 'closed'}
-      className={cn(
-        "absolute right-2 sm:right-3 top-2 bottom-2 z-30 w-60 sm:w-64 max-h-[calc(100%-1rem)] flex flex-col rounded-2xl border shadow-2xl overflow-hidden origin-top-right duration-150 fill-mode-forwards",
-        "bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-white/80 dark:border-white/20",
-        "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
-      )}
-      onClick={e => e.stopPropagation()}
-      onMouseDown={e => e.stopPropagation()}
-    >
-      <div key={a2} className="flex flex-col h-full overflow-hidden animate-in fade-in-0 duration-100 fill-mode-forwards">
-        <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-black/5 dark:border-white/10 shrink-0">
-          <Flag code={a2} className="shrink-0 drop-shadow-sm" />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold truncate leading-tight text-slate-900 dark:text-slate-100">{cname}</div>
-            <div className="text-[11px] font-mono mt-0.5">
-              <span className="text-emerald-500 font-semibold">{entry.online} 在线</span>
-              {entry.offline > 0 && <span className="ml-2 text-slate-500 dark:text-slate-400">{entry.offline} 离线</span>}
+      {/* 下方联动区域抽屉 */}
+      {activeEntry && (
+        <div className="rounded-2xl p-3.5 sm:p-4 bg-white/50 dark:bg-white/5 border border-white/70 dark:border-white/10 space-y-3">
+          <div className="flex items-center justify-between pb-1 border-b border-black/5 dark:border-white/10">
+            <div className="flex items-center gap-2">
+              <Flag code={activeEntry.a2} className="shrink-0 drop-shadow-sm" />
+              <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                {activeEntry.cname}
+              </span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                ({activeEntry.online} 在线{activeEntry.offline > 0 ? ` · ${activeEntry.offline} 离线` : ''})
+              </span>
+            </div>
+            <div className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
+              {activeEntry.a2}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="关闭"
-            className="-mr-1 h-7 w-7 inline-flex items-center justify-center rounded-full bg-slate-200/80 hover:bg-slate-300 dark:bg-white/15 dark:hover:bg-white/25 text-slate-700 dark:text-slate-200 transition-colors shrink-0 cursor-pointer"
-          >
-            <X className="h-4 w-4" />
-          </button>
+
+          {/* 节点明细列表 */}
+          <div className="space-y-2 max-h-64 overflow-y-auto overscroll-contain pr-0.5">
+            {activeEntry.nodes.map(n => {
+              const u = deriveUsage(n)
+              const logo = distroLogo(n)
+              return (
+                <div
+                  key={n.uuid}
+                  onClick={() => onOpen?.(n.uuid)}
+                  className="group flex items-center justify-between p-2.5 rounded-xl bg-white/70 dark:bg-white/5 hover:bg-white/95 dark:hover:bg-white/10 border border-white/80 dark:border-white/10 shadow-sm cursor-pointer transition-all duration-150 active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <StatusDot online={n.online} />
+                    {logo && (
+                      <img src={logo} alt="" className="w-4 h-4 shrink-0 object-contain drop-shadow-sm" loading="lazy" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
+                        {displayName(n)}
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                        CPU {pct(u.cpu)} · 内存 {pct(u.mem)} · 磁盘 {pct(u.disk)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 font-mono text-[11px] text-right">
+                    <div>
+                      <div className="font-semibold text-slate-700 dark:text-slate-300">
+                        ↑ {bytes(u.netOut || 0)}/s
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                        ↓ {bytes(u.netIn || 0)}/s
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto overscroll-contain py-1">
-          {entry.nodes.map(n => {
-            const logo = distroLogo(n)
-            return (
-              <button
-                key={n.uuid}
-                onClick={() => onPick(n.uuid)}
-                className="group w-full flex items-center gap-2 px-3.5 py-2 text-xs hover:bg-black/5 dark:hover:bg-white/10 text-left transition-colors"
-              >
-                <StatusDot online={n.online} className="w-1.5 h-1.5" />
-                {logo && (
-                  <img
-                    src={logo}
-                    alt=""
-                    className="w-3.5 h-3.5 shrink-0 object-contain drop-shadow-sm"
-                    loading="lazy"
-                  />
-                )}
-                <span className="truncate flex-1 text-slate-800 dark:text-slate-200 font-medium">{displayName(n)}</span>
-                <ChevronRight className="h-3 w-3 text-slate-400 dark:text-slate-500 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-700 dark:group-hover:text-slate-300" />
-              </button>
-            )
-          })}
-        </div>
-      </div>
-    </div>
+      )}
+    </Card>
   )
 }
