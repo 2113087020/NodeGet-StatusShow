@@ -29,10 +29,25 @@ import type { BackendPool } from '../api/pool'
 import type { HistorySample, LatencyType, Node, NodeMeta, TaskQueryResult } from '../types'
 
 const TOOLTIP_STYLE = {
-  background: 'hsl(var(--popover))',
-  border: '1px solid hsl(var(--border))',
-  borderRadius: 6,
+  background: 'rgba(255, 255, 255, 0.6)',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+  border: '1px solid rgba(255, 255, 255, 0.6)',
+  borderRadius: 8,
   fontSize: 11,
+  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+  color: '#333'
+}
+
+const DARK_TOOLTIP_STYLE = {
+  background: 'rgba(15, 23, 42, 0.7)',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+  border: '1px solid rgba(255, 255, 255, 0.08)',
+  borderRadius: 8,
+  fontSize: 11,
+  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+  color: '#eee'
 }
 
 interface Props {
@@ -46,6 +61,11 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
   const [stuck, setStuck] = useState(false)
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'))
+  }, [])
 
   useEffect(() => {
     if (!node) return
@@ -67,7 +87,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
     setStuck(false)
     const onScroll = () => {
       const h = headerRef.current?.offsetHeight ?? 60
-      setStuck(el.scrollTop > h)
+      setStuck(el.scrollTop > 10)
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
@@ -99,39 +119,53 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
   return (
     <div
       ref={scrollRef}
-      className="fixed inset-0 z-50 bg-background overflow-y-auto animate-in fade-in duration-150"
+      className={cn(
+        "fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-200",
+        "bg-white/45 dark:bg-black/60 backdrop-blur-2xl backdrop-saturate-150"
+      )}
     >
       <div
         ref={headerRef}
-        className={`sticky top-0 z-10 transition-[background-color,backdrop-filter,border-color] duration-200 ${
+        className={cn(
+          "sticky top-0 z-10 transition-all duration-300",
           stuck
-            ? 'border-b border-border/40 backdrop-blur bg-background/70'
-            : 'border-b border-transparent'
-        }`}
+            ? 'border-b border-white/60 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl backdrop-saturate-150 shadow-[0_4px_20px_rgba(0,0,0,0.03)]'
+            : 'border-b border-transparent bg-transparent'
+        )}
       >
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center gap-2 sm:gap-3">
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="返回" className="shrink-0">
-            <ArrowLeft className="h-4 w-4" />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center gap-2 sm:gap-3">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onClose} 
+            aria-label="返回" 
+            className="shrink-0 rounded-full bg-white/40 dark:bg-white/5 hover:bg-white/70 dark:hover:bg-white/10 border border-white/60 dark:border-white/10 shadow-sm backdrop-blur-md"
+          >
+            <ArrowLeft className="h-4 w-4 text-slate-700 dark:text-slate-200" />
           </Button>
           <StatusDot online={node.online} />
           {logo && (
-            <img src={logo} alt="" className="w-5 h-5 shrink-0 object-contain" loading="lazy" />
+            <img src={logo} alt="" className="w-5 h-5 shrink-0 object-contain drop-shadow-sm" loading="lazy" />
           )}
-          <span className="font-semibold truncate min-w-0">{displayName(node)}</span>
-          <Flag code={node.meta?.region} className="shrink-0" />
-          <span className="hidden md:inline truncate text-xs font-mono text-muted-foreground">
+          <span className="font-semibold text-slate-800 dark:text-slate-100 truncate min-w-0 tracking-tight">{displayName(node)}</span>
+          <Flag code={node.meta?.region} className="shrink-0 drop-shadow-sm" />
+          <span className="hidden md:inline truncate text-xs font-mono text-slate-500 dark:text-slate-400 opacity-80">
             {node.uuid}
           </span>
           <div className="ml-auto flex flex-wrap gap-1.5 shrink-0">
-            {node.meta?.region && <Badge variant="secondary">{node.meta.region}</Badge>}
+            {node.meta?.region && <GlassBadge>{node.meta.region}</GlassBadge>}
             {showSource && (
-              <Badge variant="secondary" className="hidden sm:inline-flex">
+              <GlassBadge className="hidden sm:inline-flex">
                 {node.source}
-              </Badge>
+              </GlassBadge>
             )}
-            {virt && <Badge variant="secondary">{virt}</Badge>}
+            {virt && <GlassBadge>{virt}</GlassBadge>}
             {tags.map(t => (
-              <Badge key={t} variant="outline">
+              <Badge 
+                key={t} 
+                variant="outline"
+                className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/30 dark:bg-white/5 border-white/60 dark:border-white/10 text-slate-600 dark:text-slate-300 shadow-inner"
+              >
                 {t}
               </Badge>
             ))}
@@ -140,8 +174,8 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8">
-        <Section title="资源">
-          <div className="flex flex-wrap justify-around gap-4 sm:gap-6">
+        <Section title="资源状态">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 px-2 py-3">
             <Ring label="CPU" value={u.cpu} sub={loadAvg ?? undefined} />
             <Ring
               label="内存"
@@ -165,7 +199,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
 
         {history.length > 1 && (
           <Section title={`近 ${history.length * 2} 秒趋势`}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               <Spark
                 data={history}
                 dataKey="cpu"
@@ -173,6 +207,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
                 stroke="#3b82f6"
                 domain={[0, 100]}
                 format={pct}
+                isDark={isDark}
               />
               <Spark
                 data={history}
@@ -181,69 +216,77 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
                 stroke="#10b981"
                 domain={[0, 100]}
                 format={pct}
+                isDark={isDark}
               />
               <Spark
                 data={history}
                 dataKey="netIn"
-                label="下行"
+                label="下行带宽"
                 stroke="#8b5cf6"
                 format={v => `${bytes(v)}/s`}
+                isDark={isDark}
               />
               <Spark
                 data={history}
                 dataKey="netOut"
-                label="上行"
+                label="上行带宽"
                 stroke="#f59e0b"
                 format={v => `${bytes(v)}/s`}
+                isDark={isDark}
               />
             </div>
           </Section>
         )}
 
         <LatencyBlock
-          title="TCP Ping"
+          title="TCP 延迟"
           rows={tcpData}
           type="tcp_ping"
           loading={latencyLoading}
+          isDark={isDark}
         />
-        <LatencyBlock title="Ping" rows={pingData} type="ping" loading={latencyLoading} />
+        <LatencyBlock title="ICMP Ping 延迟" rows={pingData} type="ping" loading={latencyLoading} isDark={isDark} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Section title="系统">
-            <KV k="主机名" v={s?.system_host_name} />
-            <KV k="操作系统" v={osLabel(node)} />
-            <KV k="内核" v={s?.system_kernel || s?.system_kernel_version} />
-            <KV k="CPU 架构" v={s?.arch || s?.cpu_arch} />
-            <KV k="虚拟化" v={virt} />
-            <KV k="CPU 型号" v={cpu?.brand || cpu?.per_core?.[0]?.brand} />
-            <KV
-              k="核心"
-              v={
-                cpu?.physical_cores != null
-                  ? `${cpu.physical_cores} 物理 / ${cpu.logical_cores} 逻辑`
-                  : cpu?.per_core?.length
-                    ? `${cpu.per_core.length} 核`
-                    : null
-              }
-            />
+          <Section title="系统信息">
+            <div className="space-y-1.5 pt-1">
+              <KV k="主机名" v={s?.system_host_name} />
+              <KV k="操作系统" v={osLabel(node)} />
+              <KV k="内核版本" v={s?.system_kernel || s?.system_kernel_version} />
+              <KV k="CPU 架构" v={s?.arch || s?.cpu_arch} />
+              <KV k="虚拟化技术" v={virt} />
+              <KV k="CPU 型号" v={cpu?.brand || cpu?.per_core?.[0]?.brand} />
+              <KV
+                k="CPU 核心"
+                v={
+                  cpu?.physical_cores != null
+                    ? `${cpu.physical_cores} 物理 / ${cpu.logical_cores} 逻辑`
+                    : cpu?.per_core?.length
+                      ? `${cpu.per_core.length} 核`
+                      : null
+                }
+              />
+            </div>
           </Section>
 
           <Section title="网络与负载">
-            <KV k="累计接收" v={d?.total_received != null ? bytes(d.total_received) : null} />
-            <KV k="累计发送" v={d?.total_transmitted != null ? bytes(d.total_transmitted) : null} />
-            <KV k="磁盘读" v={d?.read_speed != null ? `${bytes(d.read_speed)}/s` : null} />
-            <KV k="磁盘写" v={d?.write_speed != null ? `${bytes(d.write_speed)}/s` : null} />
-            <KV k="进程数" v={d?.process_count} />
-            <KV
-              k="TCP / UDP"
-              v={
-                d?.tcp_connections != null || d?.udp_connections != null
-                  ? `${d?.tcp_connections ?? '—'} / ${d?.udp_connections ?? '—'}`
-                  : null
-              }
-            />
-            <KV k="运行时长" v={uptime(d?.uptime)} />
-            <KV k="数据更新" v={relativeAge(d?.timestamp)} />
+            <div className="space-y-1.5 pt-1">
+              <KV k="累计接收流量" v={d?.total_received != null ? bytes(d.total_received) : null} />
+              <KV k="累计发送流量" v={d?.total_transmitted != null ? bytes(d.total_transmitted) : null} />
+              <KV k="实时磁盘读" v={d?.read_speed != null ? `${bytes(d.read_speed)}/s` : null} />
+              <KV k="实时磁盘写" v={d?.write_speed != null ? `${bytes(d.write_speed)}/s` : null} />
+              <KV k="进程数" v={d?.process_count} />
+              <KV
+                k="TCP / UDP 连接"
+                v={
+                  d?.tcp_connections != null || d?.udp_connections != null
+                    ? `${d?.tcp_connections ?? '—'} / ${d?.udp_connections ?? '—'}`
+                    : null
+                }
+              />
+              <KV k="运行时长" v={uptime(d?.uptime)} />
+              <KV k="最近更新" v={relativeAge(d?.timestamp)} />
+            </div>
           </Section>
 
           {hasCost(node.meta) && <CostSection meta={node.meta} />}
@@ -255,8 +298,13 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Card className="p-5">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground mb-3">{title}</div>
+    <Card className={cn(
+      "p-5.5 rounded-2xl",
+      "bg-white/55 dark:bg-slate-900/40 backdrop-blur-xl backdrop-saturate-150",
+      "border border-white/70 dark:border-white/10",
+      "shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.25)]",
+    )}>
+      <div className="text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-4 px-0.5">{title}</div>
       {children}
     </Card>
   )
@@ -265,9 +313,9 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function KV({ k, v }: { k: string; v: ReactNode }) {
   if (v == null || v === '') return null
   return (
-    <div className="flex justify-between gap-3 text-sm py-1">
-      <span className="text-muted-foreground">{k}</span>
-      <span className="font-mono text-right truncate">{v}</span>
+    <div className="flex justify-between items-center gap-3 text-sm py-1 px-1 rounded hover:bg-white/40 dark:hover:bg-white/5">
+      <span className="text-slate-600 dark:text-slate-400">{k}</span>
+      <span className="font-mono text-right text-slate-800 dark:text-slate-100 font-medium truncate">{v}</span>
     </div>
   )
 }
@@ -280,32 +328,32 @@ function Ring({ label, value, sub }: { label: string; value?: number; sub?: stri
 
   return (
     <div className="flex flex-col items-center gap-2 min-w-0">
-      <div className="relative w-24 h-24 sm:w-28 sm:h-28">
+      <div className="relative w-24 h-24 sm:w-28 sm:h-28 drop-shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
           <circle
             cx="50" cy="50" r={r}
-            fill="none" strokeWidth={8}
-            className="stroke-secondary"
+            fill="none" strokeWidth={9}
+            className="stroke-slate-200/60 dark:stroke-slate-800/80 backdrop-blur-sm"
           />
           {hasValue && (
             <circle
               cx="50" cy="50" r={r}
-              fill="none" strokeWidth={8}
-              className={strokeColor(value)}
+              fill="none" strokeWidth={9}
+              className={cn(strokeColor(value), "drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]")}
               strokeDasharray={c}
               strokeDashoffset={c - (c * v) / 100}
               strokeLinecap="round"
-              style={{ transition: 'stroke-dashoffset 400ms ease' }}
+              style={{ transition: 'stroke-dashoffset 600ms cubic-bezier(0.4, 0, 0.2, 1)' }}
             />
           )}
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center text-base sm:text-lg font-semibold">
+        <div className="absolute inset-0 flex items-center justify-center text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 font-mono tracking-tight">
           {pct(value)}
         </div>
       </div>
-      <div className="text-sm font-medium">{label}</div>
+      <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{label}</div>
       {sub && (
-        <div className="text-xs font-mono text-muted-foreground truncate max-w-full" title={sub}>
+        <div className="text-xs font-mono text-slate-400 dark:text-slate-500 truncate max-w-full opacity-90" title={sub}>
           {sub}
         </div>
       )}
@@ -320,40 +368,50 @@ interface SparkProps {
   stroke: string
   domain?: [number, number]
   format: (v: number) => string
+  isDark?: boolean
 }
 
-function Spark({ data, dataKey, label, stroke, domain, format }: SparkProps) {
+function Spark({ data, dataKey, label, stroke, domain, format, isDark }: SparkProps) {
   const last = Number(data.at(-1)?.[dataKey] ?? 0)
   const id = `g-${dataKey}`
+  const tooltipStyle = isDark ? DARK_TOOLTIP_STYLE : TOOLTIP_STYLE;
+
   return (
-    <div className="rounded-md border bg-card/50 p-3">
-      <div className="flex justify-between text-[11px] mb-1">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-mono">{format(last)}</span>
+    <div className={cn(
+      "rounded-2xl p-4 transition-all",
+      "bg-white/40 dark:bg-slate-900/35 border border-white/70 dark:border-white/5",
+      "shadow-inner-[0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-none",
+      "shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
+    )}>
+      <div className="flex justify-between items-baseline mb-2 px-0.5">
+        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{label}</span>
+        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200">{format(last)}</span>
       </div>
       <div className="h-20">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={stroke} stopOpacity={0.35} />
-                <stop offset="100%" stopColor={stroke} stopOpacity={0} />
+                <stop offset="5%" stopColor={stroke} stopOpacity={isDark ? 0.25 : 0.4} />
+                <stop offset="95%" stopColor={stroke} stopOpacity={0} />
               </linearGradient>
             </defs>
             <XAxis dataKey="t" hide />
             <YAxis hide domain={domain ?? ['auto', 'auto']} />
             <Tooltip
-              contentStyle={TOOLTIP_STYLE}
+              contentStyle={tooltipStyle}
               labelFormatter={t => new Date(t).toLocaleTimeString()}
               formatter={(v: number) => [format(v), label]}
+              cursor={{ stroke: stroke, strokeWidth: 1, strokeDasharray: '3 3' }}
             />
             <Area
               type="monotone"
               dataKey={dataKey}
               stroke={stroke}
-              strokeWidth={1.5}
+              strokeWidth={1.8}
               fill={`url(#${id})`}
               isAnimationActive={false}
+              dot={false}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -367,15 +425,17 @@ interface LatencyBlockProps {
   rows: TaskQueryResult[]
   type: LatencyType
   loading: boolean
+  isDark?: boolean
 }
 
 const ms = (v: number) => `${v.toFixed(1)} ms`
 
-function LatencyBlock({ title, rows, type, loading }: LatencyBlockProps) {
+function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps) {
   const { data, series } = useMemo(() => buildLatencyChart(rows, type), [rows, type])
   const stats = useMemo(() => computeLatencyStats(rows, type), [rows, type])
   const [hidden, setHidden] = useState<Set<string>>(() => new Set())
   const empty = data.length === 0
+  const tooltipStyle = isDark ? DARK_TOOLTIP_STYLE : TOOLTIP_STYLE;
 
   const visibleSeries = series.filter(s => !hidden.has(s.name))
 
@@ -388,36 +448,39 @@ function LatencyBlock({ title, rows, type, loading }: LatencyBlockProps) {
     })
 
   return (
-    <Section title={`${title} · 近 1 小时`}>
-      <div className="relative h-60">
+    <Section title={`${title} · 近 1 小时趋势`}>
+      <div className="relative h-60 bg-white/20 dark:bg-slate-950/20 rounded-xl border border-white/60 dark:border-white/5 p-2 shadow-inner mb-4">
         {empty && (
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-            {loading ? '加载中…' : `暂无 ${type} 数据`}
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-400 dark:text-slate-500">
+            {loading ? '正在从探针节点加载中…' : `暂无 ${type} 延迟数据`}
           </div>
         )}
         {!empty && (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
               <XAxis
                 dataKey="t"
                 type="number"
                 domain={['dataMin', 'dataMax']}
                 scale="time"
                 tickFormatter={t => new Date(t).toLocaleTimeString()}
-                tick={{ fontSize: 11 }}
-                stroke="hsl(var(--muted-foreground))"
+                tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }}
+                axisLine={{ stroke: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}
+                tickLine={{ stroke: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}
               />
               <YAxis
                 tickFormatter={v => `${v}ms`}
-                tick={{ fontSize: 11 }}
-                stroke="hsl(var(--muted-foreground))"
+                tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }}
                 width={48}
                 domain={['auto', 'auto']}
+                axisLine={false}
+                tickLine={false}
               />
               <Tooltip
-                contentStyle={TOOLTIP_STYLE}
+                contentStyle={tooltipStyle}
                 labelFormatter={t => new Date(Number(t)).toLocaleTimeString()}
                 formatter={(v: number) => ms(Number(v))}
+                cursor={{ stroke: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)', strokeWidth: 1 }}
               />
               {visibleSeries.map(s => (
                 <Line
@@ -425,27 +488,28 @@ function LatencyBlock({ title, rows, type, loading }: LatencyBlockProps) {
                   type="monotone"
                   dataKey={s.name}
                   stroke={s.color}
-                  strokeWidth={1.5}
+                  strokeWidth={1.8}
                   dot={false}
                   connectNulls
                   isAnimationActive={false}
+                  className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
                 />
               ))}
             </LineChart>
           </ResponsiveContainer>
         )}
         {!empty && loading && (
-          <div className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+          <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" title="数据同步中" />
         )}
       </div>
 
       {stats.length > 0 && (
-        <div className="mt-3 border-t pt-3">
-          <div className="flex items-center px-2 pb-1 text-[11px] text-muted-foreground">
-            <span className="flex-1">来源</span>
+        <div className="mt-3 border-t border-slate-200/60 dark:border-white/10 pt-3.5 space-y-1">
+          <div className="flex items-center px-2.5 pb-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <span className="flex-1">检测来源节点</span>
             <span className="w-20 text-right">平均延迟</span>
             <span className="w-16 text-right">抖动</span>
-            <span className="w-14 text-right">丢包率</span>
+            <span className="w-14 text-right">丢包</span>
           </div>
           <div className="space-y-0.5">
             {stats.map(s => (
@@ -478,32 +542,49 @@ function LatencyStatsRow({
     <div
       onClick={onToggle}
       className={cn(
-        'flex items-center px-2 py-1 rounded-md text-xs cursor-pointer select-none transition-opacity hover:bg-muted/60',
-        hidden && 'opacity-35',
+        'flex items-center px-2.5 py-1.5 rounded-xl text-xs cursor-pointer select-none transition-all duration-200 active:scale-[0.98]',
+        'hover:bg-white/40 dark:hover:bg-white/5',
+        hidden ? 'opacity-35grayscale' : 'opacity-100',
       )}
     >
-      <span className="flex items-center gap-2 flex-1 min-w-0">
+      <span className="flex items-center gap-2.5 flex-1 min-w-0 text-slate-700 dark:text-slate-200">
         <span
-          className="inline-block w-4 h-0.5 rounded-full shrink-0"
-          style={{ background: color }}
+          className="inline-block w-3.5 h-1 rounded-full shrink-0 shadow-sm"
+          style={{ background: color, border: hidden ? '1px solid rgba(255,255,255,0.2)' : 'none' }}
         />
-        <span className="truncate">{name}</span>
+        <span className="truncate font-medium">{name}</span>
       </span>
-      <span className="w-20 text-right tabular-nums font-mono">
+      <span className="w-20 text-right tabular-nums font-mono text-slate-800 dark:text-slate-100 font-semibold">
         {avg != null ? ms(avg) : '—'}
       </span>
-      <span className="w-16 text-right tabular-nums font-mono">
+      <span className="w-16 text-right tabular-nums font-mono text-slate-500 dark:text-slate-400">
         {jitter != null ? ms(jitter) : '—'}
       </span>
       <span
         className={cn(
           'w-14 text-right tabular-nums font-mono',
-          lossRate >= 5 && 'text-red-500 font-medium',
+          lossRate >= 5 ? 'text-red-500 font-semibold' : 'text-slate-500 dark:text-slate-400',
         )}
       >
         {lossRate.toFixed(1)}%
       </span>
     </div>
+  )
+}
+
+function GlassBadge({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <Badge 
+      variant="outline"
+      className={cn(
+        "text-[10px] px-2.5 py-0.5 rounded-full",
+        "bg-white/45 dark:bg-white/5 backdrop-blur-sm border-white/70 dark:border-white/10",
+        "text-slate-700 dark:text-slate-300 shadow-[0_1px_2px_rgba(0,0,0,0.02)] uppercase tracking-wide",
+        className
+      )}
+    >
+      {children}
+    </Badge>
   )
 }
 
@@ -531,28 +612,35 @@ function CostSection({ meta }: { meta: NodeMeta }) {
 
   const barColor =
     days == null || days < 0
-      ? 'bg-muted-foreground/40'
+      ? 'bg-slate-400 dark:bg-slate-600'
       : days <= 7
-        ? 'bg-red-500'
+        ? 'bg-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.5)]'
         : days <= 30
-          ? 'bg-orange-500'
-          : 'bg-emerald-500'
+          ? 'bg-orange-500 drop-shadow-[0_0_6px_rgba(249,115,22,0.5)]'
+          : 'bg-emerald-500 drop-shadow-[0_0_6px_rgba(16,185,129,0.5)]'
 
   return (
-    <Section title="费用">
-      <KV k="月费" v={meta.price > 0 ? `${unit}${meta.price} / ${meta.priceCycle} 天` : null} />
-      <KV k="到期" v={meta.expireTime || null} />
-      <KV k="剩余" v={<span className={daysClass}>{daysLabel}</span>} />
-      <KV k="剩余价值" v={meta.price > 0 ? `${unit}${value.toFixed(2)}` : null} />
+    <Section title="账单与费用">
+      <div className="space-y-1.5 pt-1">
+        <KV k="续费月费" v={meta.price > 0 ? `${unit}${meta.price} / ${meta.priceCycle} 天` : null} />
+        <KV k="到期时间" v={meta.expireTime || null} />
+        <KV k="剩余天数" v={<span className={cn(daysClass, "font-bold")}>{daysLabel}</span>} />
+        <KV k="剩余价值 (估)" v={meta.price > 0 ? `${unit}${value.toFixed(2)}` : null} />
 
-      {meta.expireTime && days != null && (
-        <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-          <div
-            className={cn('h-full rounded-full transition-all', barColor)}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      )}
+        {meta.expireTime && days != null && (
+          <div className="mt-4 px-1.5">
+            <div className="h-2 w-full rounded-full bg-slate-200/50 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden shadow-inner">
+              <div
+                className={cn('h-full rounded-full transition-all duration-1000 ease-out', barColor)}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="text-[10px] font-mono text-center text-slate-400 dark:text-slate-500 mt-1.5 opacity-80">
+              周期已使用 {progress.toFixed(0)}%
+            </div>
+          </div>
+        )}
+      </div>
     </Section>
   )
 }
