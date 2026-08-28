@@ -20,9 +20,8 @@ export function Footer({ text, repo, dist_page }: { text?: string, repo?: string
   const laststDist = dist_page ? `${dist_page}/NodeGet-StatusShow.zip?version=v${latest}` : repo + '/releases'
 
   return (
-    <footer className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-28 sm:pb-32">
+    <footer className="relative z-10 w-full max-w-7xl mx-auto pt-2 pb-0">
       <div className="flex items-center justify-between gap-3 text-xs">
-        {/* Powered by 独立液态玻璃胶囊，固定跳转至 https://nezha.wiki/ */}
         <a 
           href="https://nezha.wiki/" 
           target="_blank" 
