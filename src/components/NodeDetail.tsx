@@ -99,26 +99,23 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
   const history = node.history || []
 
   return (
-    <div
-      ref={scrollRef}
-      className="fixed inset-0 z-50 h-full w-full overflow-y-auto overscroll-contain animate-in fade-in duration-150 bg-soft"
-    >
-      {/* 顶部独立透镜悬浮栏 */}
-      <div className="sticky top-0 z-20 w-full px-4 sm:px-6 pt-3.5 pb-1 pointer-events-none">
-        <div className="max-w-7xl mx-auto flex items-center gap-3 pointer-events-auto">
-          {/* 左侧：独立高光折射玻璃球 */}
+    <div className="fixed inset-0 z-50 h-full w-full overflow-hidden flex flex-col bg-soft select-none animate-in fade-in duration-150">
+      {/* 顶部纯悬浮导航栏：不占位，内容从底下穿过 */}
+      <div className="fixed top-0 inset-x-0 z-30 w-full px-4 sm:px-6 pt-3.5 pb-2 pointer-events-none">
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
+          {/* 左侧：返回悬浮球 */}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onClose} 
             aria-label="返回" 
-            className="w-12 h-12 rounded-full shrink-0 liquid-lens active:scale-95 transition-all duration-200"
+            className="pointer-events-auto w-12 h-12 rounded-full shrink-0 liquid-lens active:scale-95 transition-all duration-200"
           >
             <ArrowLeft className="h-5 w-5 text-slate-800 dark:text-slate-100" />
           </Button>
 
           {/* 右侧：长条液态透镜胶囊 */}
-          <div className="flex-1 min-w-0 h-12 px-4 sm:px-5 rounded-full flex items-center gap-2.5 sm:gap-3.5 liquid-lens">
+          <div className="pointer-events-auto flex-1 min-w-0 h-12 px-4 sm:px-5 rounded-full flex items-center gap-2.5 sm:gap-3.5 liquid-lens">
             <StatusDot online={node.online} />
             {logo && (
               <img src={logo} alt="" className="w-5 h-5 shrink-0 object-contain drop-shadow-sm" loading="lazy" />
@@ -152,123 +149,129 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pb-24 space-y-6">
-        <Section title="资源状态">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-6 gap-x-4 py-2">
-            <Ring label="CPU" value={u.cpu} sub={loadAvg ?? undefined} />
-            <Ring
-              label="内存"
-              value={u.mem}
-              sub={u.memTotal ? `${bytes(u.memUsed)} / ${bytes(u.memTotal)}` : undefined}
-            />
-            <Ring
-              label="磁盘"
-              value={u.disk}
-              sub={u.diskTotal ? `${bytes(u.diskUsed)} / ${bytes(u.diskTotal)}` : undefined}
-            />
-            {swap != null && (
+      {/* 唯一独立滚动容器：锁死视口，绝不触发浏览器上滑与回弹 */}
+      <div 
+        ref={scrollRef}
+        className="flex-1 w-full overflow-y-auto overscroll-contain"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-24 space-y-6">
+          <Section title="资源状态">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-6 gap-x-4 py-2">
+              <Ring label="CPU" value={u.cpu} sub={loadAvg ?? undefined} />
               <Ring
-                label="Swap"
-                value={swap}
-                sub={`${bytes(d?.used_swap)} / ${bytes(d?.total_swap)}`}
+                label="内存"
+                value={u.mem}
+                sub={u.memTotal ? `${bytes(u.memUsed)} / ${bytes(u.memTotal)}` : undefined}
               />
-            )}
-          </div>
-        </Section>
-
-        {history.length > 1 && (
-          <Section title={`近 ${history.length * 2} 秒趋势`}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Spark
-                data={history}
-                dataKey="cpu"
-                label="CPU %"
-                stroke="#3b82f6"
-                domain={[0, 100]}
-                format={pct}
-                isDark={isDark}
+              <Ring
+                label="磁盘"
+                value={u.disk}
+                sub={u.diskTotal ? `${bytes(u.diskUsed)} / ${bytes(u.diskTotal)}` : undefined}
               />
-              <Spark
-                data={history}
-                dataKey="mem"
-                label="内存 %"
-                stroke="#10b981"
-                domain={[0, 100]}
-                format={pct}
-                isDark={isDark}
-              />
-              <Spark
-                data={history}
-                dataKey="netIn"
-                label="下行带宽"
-                stroke="#8b5cf6"
-                format={v => `${bytes(v)}/s`}
-                isDark={isDark}
-              />
-              <Spark
-                data={history}
-                dataKey="netOut"
-                label="上行带宽"
-                stroke="#f59e0b"
-                format={v => `${bytes(v)}/s`}
-                isDark={isDark}
-              />
+              {swap != null && (
+                <Ring
+                  label="Swap"
+                  value={swap}
+                  sub={`${bytes(d?.used_swap)} / ${bytes(d?.total_swap)}`}
+                />
+              )}
             </div>
           </Section>
-        )}
 
-        <LatencyBlock
-          title="TCP 延迟"
-          rows={tcpData}
-          type="tcp_ping"
-          loading={latencyLoading}
-          isDark={isDark}
-        />
-        <LatencyBlock title="ICMP Ping 延迟" rows={pingData} type="ping" loading={latencyLoading} isDark={isDark} />
+          {history.length > 1 && (
+            <Section title={`近 ${history.length * 2} 秒趋势`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Spark
+                  data={history}
+                  dataKey="cpu"
+                  label="CPU %"
+                  stroke="#3b82f6"
+                  domain={[0, 100]}
+                  format={pct}
+                  isDark={isDark}
+                />
+                <Spark
+                  data={history}
+                  dataKey="mem"
+                  label="内存 %"
+                  stroke="#10b981"
+                  domain={[0, 100]}
+                  format={pct}
+                  isDark={isDark}
+                />
+                <Spark
+                  data={history}
+                  dataKey="netIn"
+                  label="下行带宽"
+                  stroke="#8b5cf6"
+                  format={v => `${bytes(v)}/s`}
+                  isDark={isDark}
+                />
+                <Spark
+                  data={history}
+                  dataKey="netOut"
+                  label="上行带宽"
+                  stroke="#f59e0b"
+                  format={v => `${bytes(v)}/s`}
+                  isDark={isDark}
+                />
+              </div>
+            </Section>
+          )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Section title="系统信息">
-            <div className="space-y-2 pt-1">
-              <KV k="主机名" v={s?.system_host_name} />
-              <KV k="操作系统" v={osLabel(node)} />
-              <KV k="内核版本" v={s?.system_kernel || s?.system_kernel_version} />
-              <KV k="CPU 架构" v={s?.arch || s?.cpu_arch} />
-              <KV k="虚拟化技术" v={virt} />
-              <KV k="CPU 型号" v={cpu?.brand || cpu?.per_core?.[0]?.brand} />
-              <KV
-                k="CPU 核心"
-                v={
-                  cpu?.physical_cores != null
-                    ? `${cpu.physical_cores} 物理 / ${cpu.logical_cores} 逻辑`
-                    : cpu?.per_core?.length
-                      ? `${cpu.per_core.length} 核`
+          <LatencyBlock
+            title="TCP 延迟"
+            rows={tcpData}
+            type="tcp_ping"
+            loading={latencyLoading}
+            isDark={isDark}
+          />
+          <LatencyBlock title="ICMP Ping 延迟" rows={pingData} type="ping" loading={latencyLoading} isDark={isDark} />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Section title="系统信息">
+              <div className="space-y-2 pt-1">
+                <KV k="主机名" v={s?.system_host_name} />
+                <KV k="操作系统" v={osLabel(node)} />
+                <KV k="内核版本" v={s?.system_kernel || s?.system_kernel_version} />
+                <KV k="CPU 架构" v={s?.arch || s?.cpu_arch} />
+                <KV k="虚拟化技术" v={virt} />
+                <KV k="CPU 型号" v={cpu?.brand || cpu?.per_core?.[0]?.brand} />
+                <KV
+                  k="CPU 核心"
+                  v={
+                    cpu?.physical_cores != null
+                      ? `${cpu.physical_cores} 物理 / ${cpu.logical_cores} 逻辑`
+                      : cpu?.per_core?.length
+                        ? `${cpu.per_core.length} 核`
+                        : null
+                  }
+                />
+              </div>
+            </Section>
+
+            <Section title="网络与负载">
+              <div className="space-y-2 pt-1">
+                <KV k="累计接收流量" v={d?.total_received != null ? bytes(d.total_received) : null} />
+                <KV k="累计发送流量" v={d?.total_transmitted != null ? bytes(d.total_transmitted) : null} />
+                <KV k="实时磁盘读" v={d?.read_speed != null ? `${bytes(d.read_speed)}/s` : null} />
+                <KV k="实时磁盘写" v={d?.write_speed != null ? `${bytes(d.write_speed)}/s` : null} />
+                <KV k="进程数" v={d?.process_count} />
+                <KV
+                  k="TCP / UDP 连接"
+                  v={
+                    d?.tcp_connections != null || d?.udp_connections != null
+                      ? `${d?.tcp_connections ?? '—'} / ${d?.udp_connections ?? '—'}`
                       : null
-                }
-              />
-            </div>
-          </Section>
+                  }
+                />
+                <KV k="运行时长" v={uptime(d?.uptime)} />
+                <KV k="最近更新" v={relativeAge(d?.timestamp)} />
+              </div>
+            </Section>
 
-          <Section title="网络与负载">
-            <div className="space-y-2 pt-1">
-              <KV k="累计接收流量" v={d?.total_received != null ? bytes(d.total_received) : null} />
-              <KV k="累计发送流量" v={d?.total_transmitted != null ? bytes(d.total_transmitted) : null} />
-              <KV k="实时磁盘读" v={d?.read_speed != null ? `${bytes(d.read_speed)}/s` : null} />
-              <KV k="实时磁盘写" v={d?.write_speed != null ? `${bytes(d.write_speed)}/s` : null} />
-              <KV k="进程数" v={d?.process_count} />
-              <KV
-                k="TCP / UDP 连接"
-                v={
-                  d?.tcp_connections != null || d?.udp_connections != null
-                    ? `${d?.tcp_connections ?? '—'} / ${d?.udp_connections ?? '—'}`
-                    : null
-                }
-              />
-              <KV k="运行时长" v={uptime(d?.uptime)} />
-              <KV k="最近更新" v={relativeAge(d?.timestamp)} />
-            </div>
-          </Section>
-
-          {hasCost(node.meta) && <CostSection meta={node.meta} />}
+            {hasCost(node.meta) && <CostSection meta={node.meta} />}
+          </div>
         </div>
       </div>
     </div>
