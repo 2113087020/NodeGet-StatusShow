@@ -77,7 +77,6 @@
     radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.6) 0px, transparent 55%);
 }
 
-/* 更明显、绚丽且更亮的深色背景光效 */
 .dark .bg-soft {
   background-color: #0f172a;
   background-image:
@@ -88,27 +87,27 @@
     radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.45) 0px, transparent 60%);
 }
 
-/* 半透明毛玻璃胶囊 */
+/* 更通透（高透明度）、低模糊的轻量液态玻璃 */
 .liquid-lens {
   position: relative;
   isolation: isolate;
-  background-color: rgba(255, 255, 255, 0.38) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
-  backdrop-filter: blur(16px) saturate(160%) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(130%) !important;
+  backdrop-filter: blur(8px) saturate(130%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.65);
   box-shadow: 
-    0 8px 24px -4px rgba(0, 0, 0, 0.06),
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.9),
-    inset 0 -1px 2px 0 rgba(255, 255, 255, 0.4);
+    0 6px 20px -4px rgba(0, 0, 0, 0.05),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 1.5px 0 rgba(255, 255, 255, 0.2);
 }
 
 .dark .liquid-lens {
-  background-color: rgba(30, 41, 59, 0.5) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
-  backdrop-filter: blur(16px) saturate(160%) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  background-color: rgba(15, 23, 42, 0.28) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(130%) !important;
+  backdrop-filter: blur(8px) saturate(130%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 
-    0 8px 24px -4px rgba(0, 0, 0, 0.35),
-    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.25),
-    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.3);
+    0 6px 20px -4px rgba(0, 0, 0, 0.25),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 1.5px 0 rgba(0, 0, 0, 0.2);
 }
