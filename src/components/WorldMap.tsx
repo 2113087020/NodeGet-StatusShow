@@ -167,7 +167,7 @@ export function WorldMap({ nodes, onOpen }: Props) {
     liveRef.current = { byCountry, onOpen }
   })
 
-  const option = useMemo(() => buildOption(byCountry), [dataSig, ready])
+  const option = useMemo(() => buildOption(byCountry, Boolean(pickedA2)), [dataSig, ready, pickedA2])
 
   useEffect(() => {
     if (!ready || !wrapRef.current) return
@@ -178,7 +178,11 @@ export function WorldMap({ nodes, onOpen }: Props) {
         const e = cur.byCountry.get(p.name)
         if (!e) return
         if (e.nodes.length === 1) cur.onOpen?.(e.nodes[0].uuid)
-        else setPickedA2(p.name)
+        else {
+          // 点击弹出列表时，隐藏默认悬浮提示，防止互相盖住
+          chartRef.current?.dispatchAction({ type: 'hideTip' })
+          setPickedA2(p.name)
+        }
       })
     }
     chartRef.current.setOption(option, false)
@@ -249,7 +253,7 @@ export function WorldMap({ nodes, onOpen }: Props) {
   )
 }
 
-function buildOption(byCountry: Map<string, CountryEntry>) {
+function buildOption(byCountry: Map<string, CountryEntry>, hasPicked: boolean) {
   const entries = [...byCountry.entries()].filter(([a2]) => knownA2.has(a2))
   const data = entries.map(([a2, e]) => ({ name: a2, value: e.online + e.offline }))
   const max = data.reduce((m, d) => Math.max(m, d.value), 0)
@@ -295,6 +299,7 @@ function buildOption(byCountry: Map<string, CountryEntry>) {
       calculable: false,
     },
     tooltip: {
+      show: !hasPicked,
       trigger: 'item' as const,
       backgroundColor: 'rgba(15, 23, 42, 0.85)',
       borderColor: 'rgba(255, 255, 255, 0.15)',
@@ -363,7 +368,8 @@ function NodePopover({
     <div
       data-state={open ? 'open' : 'closed'}
       className={cn(
-        "absolute right-3 top-3 z-20 w-64 rounded-2xl liquid-lens shadow-2xl overflow-hidden origin-top-right duration-150 fill-mode-forwards",
+        "absolute right-3 top-3 z-30 w-64 rounded-2xl border shadow-2xl overflow-hidden origin-top-right duration-150 fill-mode-forwards",
+        "bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border-white/80 dark:border-white/20",
         "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
         "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
       )}
@@ -371,7 +377,7 @@ function NodePopover({
       onMouseDown={e => e.stopPropagation()}
     >
       <div key={a2} className="animate-in fade-in-0 duration-100 fill-mode-forwards">
-        <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-white/60 dark:border-white/10">
+        <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-black/5 dark:border-white/10">
           <Flag code={a2} className="shrink-0 drop-shadow-sm" />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-bold truncate leading-tight text-slate-900 dark:text-slate-100">{cname}</div>
@@ -380,12 +386,13 @@ function NodePopover({
               {entry.offline > 0 && <span className="ml-2 text-slate-500 dark:text-slate-400">{entry.offline} 离线</span>}
             </div>
           </div>
+          {/* 清晰的关闭按钮 */}
           <button
             onClick={onClose}
             aria-label="关闭"
-            className="-mr-1 h-6 w-6 inline-flex items-center justify-center rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/40 dark:hover:bg-white/10 shrink-0 transition-colors"
+            className="-mr-1 h-7 w-7 inline-flex items-center justify-center rounded-full bg-slate-200/80 hover:bg-slate-300 dark:bg-white/15 dark:hover:bg-white/25 text-slate-700 dark:text-slate-200 transition-colors shrink-0 cursor-pointer"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
         <div className="max-h-72 overflow-auto py-1">
@@ -395,7 +402,7 @@ function NodePopover({
               <button
                 key={n.uuid}
                 onClick={() => onPick(n.uuid)}
-                className="group w-full flex items-center gap-2 px-3.5 py-1.5 text-xs hover:bg-white/50 dark:hover:bg-white/10 text-left transition-colors"
+                className="group w-full flex items-center gap-2 px-3.5 py-2 text-xs hover:bg-black/5 dark:hover:bg-white/10 text-left transition-colors"
               >
                 <StatusDot online={n.online} className="w-1.5 h-1.5" />
                 {logo && (
