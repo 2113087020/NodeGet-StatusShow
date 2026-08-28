@@ -20,8 +20,8 @@ interface Props {
 export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onSort, hidden }: Props) {
   return (
     <>
-      {/* 顶部悬浮 Dock：无实体背景栏，纯悬浮独立胶囊 */}
-      <header className="fixed top-0 inset-x-0 z-30 w-full px-4 sm:px-6 pt-3.5 pb-2 pointer-events-none">
+      {/* 顶部悬浮操作区：px-6 sm:px-8 略微收窄，避免与下方卡片边缘重叠 */}
+      <header className="fixed top-0 inset-x-0 z-30 w-full px-6 sm:px-8 pt-3.5 pb-2 pointer-events-none">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           {/* 左侧：Logo 胶囊 + 自适应搜索胶囊 */}
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
