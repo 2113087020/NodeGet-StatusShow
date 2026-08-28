@@ -17,24 +17,21 @@ interface Props {
 export function NodeTable({ nodes, onOpen }: Props) {
   return (
     <Card className={cn(
-      'rounded-2xl overflow-hidden',
-      'bg-white/55 dark:bg-slate-900/35 backdrop-blur-xl backdrop-saturate-150',
-      'border border-white/70 dark:border-white/10',
-      'shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.25)]',
+      'rounded-3xl overflow-hidden liquid-lens'
     )}>
       <Table>
-        <TableHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200/60 dark:border-white/10">
+        <TableHeader className="bg-white/20 dark:bg-white/5 border-b border-white/60 dark:border-white/10">
           <TableRow className="hover:bg-transparent">
-            <TableHead className="w-8" />
-            <TableHead className="text-slate-700 dark:text-slate-300">名称</TableHead>
-            <TableHead className="w-12 text-center text-slate-700 dark:text-slate-300">地区</TableHead>
-            <TableHead className="text-slate-700 dark:text-slate-300">架构</TableHead>
-            <TableHead className="text-slate-700 dark:text-slate-300">CPU</TableHead>
-            <TableHead className="text-slate-700 dark:text-slate-300">内存</TableHead>
-            <TableHead className="text-slate-700 dark:text-slate-300">磁盘</TableHead>
-            <TableHead className="text-slate-700 dark:text-slate-300">下行</TableHead>
-            <TableHead className="text-slate-700 dark:text-slate-300">上行</TableHead>
-            <TableHead className="text-slate-700 dark:text-slate-300">更新</TableHead>
+            <TableHead className="w-8 shrink-0" />
+            <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">名称</TableHead>
+            <TableHead className="w-16 min-w-[4rem] text-center text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">地区</TableHead>
+            <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">架构</TableHead>
+            <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">CPU</TableHead>
+            <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">内存</TableHead>
+            <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">磁盘</TableHead>
+            <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">下行</TableHead>
+            <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">上行</TableHead>
+            <TableHead className="w-20 min-w-[4.5rem] text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">更新</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -48,14 +45,14 @@ export function NodeTable({ nodes, onOpen }: Props) {
                 onClick={() => onOpen?.(n.uuid)}
                 className={cn(
                   'cursor-pointer transition-colors group',
-                  'hover:bg-white/50 dark:hover:bg-white/5',
+                  'hover:bg-white/40 dark:hover:bg-white/5',
                   !n.online && 'opacity-60 grayscale-[0.3]',
                 )}
               >
-                <TableCell>
+                <TableCell className="shrink-0">
                   <StatusDot online={n.online} />
                 </TableCell>
-                <TableCell className="font-semibold text-slate-800 dark:text-slate-100">
+                <TableCell className="font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">
                   <div className="flex items-center gap-2 min-w-0">
                     {logo && (
                       <img
@@ -68,40 +65,40 @@ export function NodeTable({ nodes, onOpen }: Props) {
                     <span className="truncate tracking-tight">{displayName(n)}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-center">
+                <TableCell className="text-center whitespace-nowrap min-w-[4rem]">
                   {n.meta?.region ? (
-                    <Flag code={n.meta.region} className="drop-shadow-sm" />
+                    <Flag code={n.meta.region} className="drop-shadow-sm inline-block" />
                   ) : (
-                    <span className="text-slate-400 dark:text-slate-600 text-sm">—</span>
+                    <span className="text-slate-400 dark:text-slate-500 text-sm">—</span>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   {virt ? (
-                    <Badge variant="outline" className="text-[10px] px-2 py-0.5 rounded-full bg-white/40 dark:bg-white/5 border-white/60 dark:border-white/10 text-slate-600 dark:text-slate-300 shadow-[0_1px_2px_rgba(0,0,0,0.03)] uppercase tracking-wide">
+                    <Badge variant="outline" className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/40 dark:bg-white/10 border-white/70 dark:border-white/20 text-slate-700 dark:text-slate-300 shadow-[0_1px_2px_rgba(0,0,0,0.03)] uppercase tracking-wide">
                       {virt}
                     </Badge>
                   ) : (
-                    <span className="text-slate-400 dark:text-slate-600">—</span>
+                    <span className="text-slate-400 dark:text-slate-500">—</span>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   <CellBar value={u.cpu} />
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   <CellBar
                     value={u.mem}
                     hint={u.memTotal ? `${bytes(u.memUsed)} / ${bytes(u.memTotal)}` : null}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell className="whitespace-nowrap">
                   <CellBar
                     value={u.disk}
                     hint={u.diskTotal ? `${bytes(u.diskUsed)} / ${bytes(u.diskTotal)}` : null}
                   />
                 </TableCell>
-                <TableCell className="font-mono text-slate-700 dark:text-slate-200">{bytes(u.netIn || 0)}/s</TableCell>
-                <TableCell className="font-mono text-slate-700 dark:text-slate-200">{bytes(u.netOut || 0)}/s</TableCell>
-                <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400 opacity-90">
+                <TableCell className="font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">{bytes(u.netIn || 0)}/s</TableCell>
+                <TableCell className="font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">{bytes(u.netOut || 0)}/s</TableCell>
+                <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap min-w-[4.5rem]">
                   {relativeAge(u.ts)}
                 </TableCell>
               </TableRow>
@@ -119,9 +116,9 @@ function CellBar({ value, hint }: { value: number | undefined; hint?: string | n
       <Progress 
         value={value} 
         indicatorClassName={loadColor(value)} 
-        className="flex-1 h-1.5 bg-slate-200/50 dark:bg-slate-800/60 rounded-full backdrop-blur-sm" 
+        className="flex-1 h-1.5 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden" 
       />
-      <span className="font-mono text-xs w-12 text-right text-slate-700 dark:text-slate-300 font-medium">{pct(value)}</span>
+      <span className="font-mono text-xs w-12 text-right text-slate-900 dark:text-slate-100 font-semibold">{pct(value)}</span>
     </div>
   )
 }
