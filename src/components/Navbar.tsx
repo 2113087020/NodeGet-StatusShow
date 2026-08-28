@@ -28,40 +28,44 @@ export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onS
 
   return (
     <>
-      {/* 顶部独立悬浮模块（左右分离，无全屏模糊背景） */}
-      <header className="sticky top-0 z-30 w-full px-3.5 sm:px-6 pt-3 pb-1 pointer-events-none">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          {/* 绿色左侧：网站名称与 Logo 独立悬浮玻璃条 */}
+      {/* 顶部独立悬浮导航 */}
+      <header className="sticky top-0 z-30 w-full px-4 sm:px-6 pt-3.5 pb-1 pointer-events-none">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          {/* 左上角：大号 Logo 与大号标题胶囊 */}
           <a
             href="./"
-            className="pointer-events-auto h-11 px-3.5 sm:px-4 rounded-full flex items-center gap-2.5 liquid-lens hover:opacity-90 active:scale-95 transition-all duration-200"
+            className="pointer-events-auto h-12 px-4 sm:px-5 rounded-full flex items-center gap-3 liquid-lens hover:opacity-95 active:scale-95 transition-all duration-200"
           >
             {logo ? (
-              <img src={logo} alt="" className="w-5 h-5 rounded object-contain drop-shadow-sm shrink-0" />
+              <img src={logo} alt="" className="w-7 h-7 rounded-lg object-contain drop-shadow-sm shrink-0" />
             ) : (
-              <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-400/40 flex items-center justify-center font-bold text-xs shrink-0">
+              <div className="w-7 h-7 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-400/40 flex items-center justify-center font-bold text-sm shrink-0">
                 {siteName.slice(0, 1)}
               </div>
             )}
-            <span className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-100 tracking-tight truncate">
+            <span className="font-bold text-base sm:text-lg text-slate-800 dark:text-slate-100 tracking-tight truncate drop-shadow-sm">
               {siteName}
             </span>
           </a>
 
-          {/* 绿色右侧：排序与夜间模式独立悬浮玻璃条 */}
-          <div className="pointer-events-auto h-11 px-2 rounded-full flex items-center gap-1 liquid-lens">
-            <SortMenu value={sort} onChange={onSort} />
-            <ThemeToggle />
+          {/* 右上角：两个独立的悬浮玻璃球 */}
+          <div className="pointer-events-auto flex items-center gap-2.5">
+            <div className="w-11 h-11 rounded-full flex items-center justify-center liquid-lens active:scale-95 transition-all duration-200">
+              <SortMenu value={sort} onChange={onSort} />
+            </div>
+            <div className="w-11 h-11 rounded-full flex items-center justify-center liquid-lens active:scale-95 transition-all duration-200">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
 
-      {/* 红色部分：固定在页面最底部的独立悬浮液态玻璃 Dock 栏 */}
-      <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-        <div className="pointer-events-auto h-12 px-3 rounded-full flex items-center gap-2 liquid-lens shadow-[0_10px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-          {/* 搜索区域 */}
+      {/* 底部悬浮：独立搜索球 + 独立布局切换大胶囊 */}
+      <div className="fixed bottom-5 inset-x-0 z-40 flex justify-center items-center gap-3 px-4 pointer-events-none">
+        {/* 搜索：未展开是独立玻璃球，点击展开为长条输入框 */}
+        <div className="pointer-events-auto transition-all duration-300">
           {searchOpen ? (
-            <div className="flex items-center gap-1">
+            <div className="h-12 px-3 rounded-full flex items-center gap-1.5 liquid-lens shadow-[0_10px_30px_rgba(0,0,0,0.12)]">
               <Search
                 ref={inputRef}
                 value={query}
@@ -86,21 +90,18 @@ export function Navbar({ siteName, logo, query, onQuery, view, onView, sort, onS
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-full text-slate-700 dark:text-slate-200 hover:bg-white/40 active:scale-95 transition-all"
+              className="w-12 h-12 rounded-full liquid-lens text-slate-700 dark:text-slate-200 hover:bg-white/70 active:scale-95 transition-all shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
               onClick={() => setSearchOpen(true)}
               aria-label="搜索"
             >
-              <SearchIcon className="h-4.5 w-4.5" />
+              <SearchIcon className="h-5 w-5" />
             </Button>
           )}
+        </div>
 
-          {/* 分隔竖线 */}
-          <div className="w-[1px] h-5 bg-slate-300/60 dark:bg-white/10 my-auto" />
-
-          {/* 多视图切换 */}
-          <div className="flex items-center">
-            <ViewToggle value={view} onChange={onView} />
-          </div>
+        {/* 布局切换：三个大号按钮自成一体的液态玻璃胶囊 */}
+        <div className="pointer-events-auto h-12 px-2.5 rounded-full flex items-center liquid-lens shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+          <ViewToggle value={view} onChange={onView} />
         </div>
       </div>
     </>
