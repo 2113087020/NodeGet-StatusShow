@@ -29,24 +29,20 @@ import type { BackendPool } from '../api/pool'
 import type { HistorySample, LatencyType, Node, NodeMeta, TaskQueryResult } from '../types'
 
 const TOOLTIP_STYLE = {
-  background: 'rgba(255, 255, 255, 0.6)',
-  backdropFilter: 'blur(10px)',
-  WebkitBackdropFilter: 'blur(10px)',
-  border: '1px solid rgba(255, 255, 255, 0.6)',
+  background: 'rgba(255, 255, 255, 0.85)',
+  border: '1px solid rgba(255, 255, 255, 0.8)',
   borderRadius: 8,
   fontSize: 11,
-  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
   color: '#333'
 }
 
 const DARK_TOOLTIP_STYLE = {
-  background: 'rgba(15, 23, 42, 0.7)',
-  backdropFilter: 'blur(10px)',
-  WebkitBackdropFilter: 'blur(10px)',
-  border: '1px solid rgba(255, 255, 255, 0.08)',
+  background: 'rgba(15, 23, 42, 0.85)',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
   borderRadius: 8,
   fontSize: 11,
-  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
   color: '#eee'
 }
 
@@ -120,16 +116,16 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
     <div
       ref={scrollRef}
       className={cn(
-        "fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-200",
-        "bg-white/45 dark:bg-black/60 backdrop-blur-2xl backdrop-saturate-150"
+        "fixed inset-0 z-50 overflow-y-auto animate-in fade-in duration-150",
+        "bg-white/60 dark:bg-black/70 backdrop-blur-md"
       )}
     >
       <div
         ref={headerRef}
         className={cn(
-          "sticky top-0 z-10 transition-all duration-300",
+          "sticky top-0 z-10 transition-all duration-200",
           stuck
-            ? 'border-b border-white/60 dark:border-white/10 bg-white/60 dark:bg-slate-900/40 backdrop-blur-xl backdrop-saturate-150 shadow-[0_4px_20px_rgba(0,0,0,0.03)]'
+            ? 'border-b border-white/60 dark:border-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.03)]'
             : 'border-b border-transparent bg-transparent'
         )}
       >
@@ -139,17 +135,17 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
             size="icon" 
             onClick={onClose} 
             aria-label="返回" 
-            className="shrink-0 rounded-full bg-white/40 dark:bg-white/5 hover:bg-white/70 dark:hover:bg-white/10 border border-white/60 dark:border-white/10 shadow-sm backdrop-blur-md"
+            className="shrink-0 rounded-full bg-white/50 dark:bg-white/5 hover:bg-white/80 border border-white/60 dark:border-white/10 shadow-sm"
           >
-            <ArrowLeft className="h-4 w-4 text-slate-700 dark:text-slate-200" />
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <StatusDot online={node.online} />
           {logo && (
-            <img src={logo} alt="" className="w-5 h-5 shrink-0 object-contain drop-shadow-sm" loading="lazy" />
+            <img src={logo} alt="" className="w-5 h-5 shrink-0 object-contain" loading="lazy" />
           )}
-          <span className="font-semibold text-slate-800 dark:text-slate-100 truncate min-w-0 tracking-tight">{displayName(node)}</span>
-          <Flag code={node.meta?.region} className="shrink-0 drop-shadow-sm" />
-          <span className="hidden md:inline truncate text-xs font-mono text-slate-500 dark:text-slate-400 opacity-80">
+          <span className="font-semibold text-slate-800 dark:text-slate-100 truncate min-w-0">{displayName(node)}</span>
+          <Flag code={node.meta?.region} className="shrink-0" />
+          <span className="hidden md:inline truncate text-xs font-mono text-muted-foreground">
             {node.uuid}
           </span>
           <div className="ml-auto flex flex-wrap gap-1.5 shrink-0">
@@ -164,7 +160,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
               <Badge 
                 key={t} 
                 variant="outline"
-                className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/30 dark:bg-white/5 border-white/60 dark:border-white/10 text-slate-600 dark:text-slate-300 shadow-inner"
+                className="text-[11px] px-2.5 py-0.5 rounded-full bg-white/40 dark:bg-white/5 border-white/60 dark:border-white/10"
               >
                 {t}
               </Badge>
@@ -173,9 +169,9 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-4 pb-12 space-y-6">
         <Section title="资源状态">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 px-2 py-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-6 gap-x-4 py-2">
             <Ring label="CPU" value={u.cpu} sub={loadAvg ?? undefined} />
             <Ring
               label="内存"
@@ -199,7 +195,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
 
         {history.length > 1 && (
           <Section title={`近 ${history.length * 2} 秒趋势`}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Spark
                 data={history}
                 dataKey="cpu"
@@ -247,9 +243,9 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
         />
         <LatencyBlock title="ICMP Ping 延迟" rows={pingData} type="ping" loading={latencyLoading} isDark={isDark} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Section title="系统信息">
-            <div className="space-y-1.5 pt-1">
+            <div className="space-y-2 pt-1">
               <KV k="主机名" v={s?.system_host_name} />
               <KV k="操作系统" v={osLabel(node)} />
               <KV k="内核版本" v={s?.system_kernel || s?.system_kernel_version} />
@@ -270,7 +266,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
           </Section>
 
           <Section title="网络与负载">
-            <div className="space-y-1.5 pt-1">
+            <div className="space-y-2 pt-1">
               <KV k="累计接收流量" v={d?.total_received != null ? bytes(d.total_received) : null} />
               <KV k="累计发送流量" v={d?.total_transmitted != null ? bytes(d.total_transmitted) : null} />
               <KV k="实时磁盘读" v={d?.read_speed != null ? `${bytes(d.read_speed)}/s` : null} />
@@ -299,12 +295,12 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Card className={cn(
-      "p-5.5 rounded-2xl",
-      "bg-white/55 dark:bg-slate-900/40 backdrop-blur-xl backdrop-saturate-150",
-      "border border-white/70 dark:border-white/10",
-      "shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.25)]",
+      "p-6 rounded-2xl",
+      "bg-white/60 dark:bg-slate-900/50 backdrop-blur-md",
+      "border border-white/80 dark:border-white/10",
+      "shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.2)]",
     )}>
-      <div className="text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-4 px-0.5">{title}</div>
+      <div className="text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 mb-5">{title}</div>
       {children}
     </Card>
   )
@@ -313,8 +309,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function KV({ k, v }: { k: string; v: ReactNode }) {
   if (v == null || v === '') return null
   return (
-    <div className="flex justify-between items-center gap-3 text-sm py-1 px-1 rounded hover:bg-white/40 dark:hover:bg-white/5">
-      <span className="text-slate-600 dark:text-slate-400">{k}</span>
+    <div className="flex justify-between items-center gap-3 text-sm py-1.5 px-1 rounded hover:bg-white/30 dark:hover:bg-white/5">
+      <span className="text-muted-foreground">{k}</span>
       <span className="font-mono text-right text-slate-800 dark:text-slate-100 font-medium truncate">{v}</span>
     </div>
   )
@@ -328,32 +324,32 @@ function Ring({ label, value, sub }: { label: string; value?: number; sub?: stri
 
   return (
     <div className="flex flex-col items-center gap-2 min-w-0">
-      <div className="relative w-24 h-24 sm:w-28 sm:h-28 drop-shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+      <div className="relative w-24 h-24 sm:w-28 sm:h-28">
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
           <circle
             cx="50" cy="50" r={r}
-            fill="none" strokeWidth={9}
-            className="stroke-slate-200/60 dark:stroke-slate-800/80 backdrop-blur-sm"
+            fill="none" strokeWidth={8}
+            className="stroke-slate-200/70 dark:stroke-slate-800/80"
           />
           {hasValue && (
             <circle
               cx="50" cy="50" r={r}
-              fill="none" strokeWidth={9}
-              className={cn(strokeColor(value), "drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]")}
+              fill="none" strokeWidth={8}
+              className={strokeColor(value)}
               strokeDasharray={c}
               strokeDashoffset={c - (c * v) / 100}
               strokeLinecap="round"
-              style={{ transition: 'stroke-dashoffset 600ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+              style={{ transition: 'stroke-dashoffset 400ms ease' }}
             />
           )}
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 font-mono tracking-tight">
+        <div className="absolute inset-0 flex items-center justify-center text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 font-mono">
           {pct(value)}
         </div>
       </div>
       <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{label}</div>
       {sub && (
-        <div className="text-xs font-mono text-slate-400 dark:text-slate-500 truncate max-w-full opacity-90" title={sub}>
+        <div className="text-xs font-mono text-muted-foreground truncate max-w-full" title={sub}>
           {sub}
         </div>
       )}
@@ -378,13 +374,12 @@ function Spark({ data, dataKey, label, stroke, domain, format, isDark }: SparkPr
 
   return (
     <div className={cn(
-      "rounded-2xl p-4 transition-all",
-      "bg-white/40 dark:bg-slate-900/35 border border-white/70 dark:border-white/5",
-      "shadow-inner-[0_1px_1px_rgba(255,255,255,0.7)] dark:shadow-none",
-      "shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
+      "rounded-xl p-4 transition-all",
+      "bg-white/50 dark:bg-slate-900/40 border border-white/70 dark:border-white/5",
+      "shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
     )}>
-      <div className="flex justify-between items-baseline mb-2 px-0.5">
-        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{label}</span>
+      <div className="flex justify-between items-baseline mb-2">
+        <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
         <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-200">{format(last)}</span>
       </div>
       <div className="h-20">
@@ -392,7 +387,7 @@ function Spark({ data, dataKey, label, stroke, domain, format, isDark }: SparkPr
           <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={stroke} stopOpacity={isDark ? 0.25 : 0.4} />
+                <stop offset="5%" stopColor={stroke} stopOpacity={0.3} />
                 <stop offset="95%" stopColor={stroke} stopOpacity={0} />
               </linearGradient>
             </defs>
@@ -402,7 +397,6 @@ function Spark({ data, dataKey, label, stroke, domain, format, isDark }: SparkPr
               contentStyle={tooltipStyle}
               labelFormatter={t => new Date(t).toLocaleTimeString()}
               formatter={(v: number) => [format(v), label]}
-              cursor={{ stroke: stroke, strokeWidth: 1, strokeDasharray: '3 3' }}
             />
             <Area
               type="monotone"
@@ -449,9 +443,9 @@ function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps)
 
   return (
     <Section title={`${title} · 近 1 小时趋势`}>
-      <div className="relative h-60 bg-white/20 dark:bg-slate-950/20 rounded-xl border border-white/60 dark:border-white/5 p-2 shadow-inner mb-4">
+      <div className="relative h-60 bg-white/30 dark:bg-slate-950/20 rounded-xl border border-white/60 dark:border-white/5 p-2 mb-4">
         {empty && (
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-400 dark:text-slate-500">
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
             {loading ? '正在从探针节点加载中…' : `暂无 ${type} 延迟数据`}
           </div>
         )}
@@ -480,7 +474,6 @@ function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps)
                 contentStyle={tooltipStyle}
                 labelFormatter={t => new Date(Number(t)).toLocaleTimeString()}
                 formatter={(v: number) => ms(Number(v))}
-                cursor={{ stroke: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)', strokeWidth: 1 }}
               />
               {visibleSeries.map(s => (
                 <Line
@@ -492,20 +485,19 @@ function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps)
                   dot={false}
                   connectNulls
                   isAnimationActive={false}
-                  className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
                 />
               ))}
             </LineChart>
           </ResponsiveContainer>
         )}
         {!empty && loading && (
-          <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" title="数据同步中" />
+          <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="数据同步中" />
         )}
       </div>
 
       {stats.length > 0 && (
-        <div className="mt-3 border-t border-slate-200/60 dark:border-white/10 pt-3.5 space-y-1">
-          <div className="flex items-center px-2.5 pb-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        <div className="mt-3 border-t border-slate-200/80 dark:border-white/10 pt-3.5 space-y-1">
+          <div className="flex items-center px-2.5 pb-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
             <span className="flex-1">检测来源节点</span>
             <span className="w-20 text-right">平均延迟</span>
             <span className="w-16 text-right">抖动</span>
@@ -542,28 +534,28 @@ function LatencyStatsRow({
     <div
       onClick={onToggle}
       className={cn(
-        'flex items-center px-2.5 py-1.5 rounded-xl text-xs cursor-pointer select-none transition-all duration-200 active:scale-[0.98]',
+        'flex items-center px-2.5 py-1.5 rounded-xl text-xs cursor-pointer select-none transition-colors',
         'hover:bg-white/40 dark:hover:bg-white/5',
-        hidden ? 'opacity-35grayscale' : 'opacity-100',
+        hidden ? 'opacity-35' : 'opacity-100',
       )}
     >
       <span className="flex items-center gap-2.5 flex-1 min-w-0 text-slate-700 dark:text-slate-200">
         <span
-          className="inline-block w-3.5 h-1 rounded-full shrink-0 shadow-sm"
-          style={{ background: color, border: hidden ? '1px solid rgba(255,255,255,0.2)' : 'none' }}
+          className="inline-block w-3.5 h-1 rounded-full shrink-0"
+          style={{ background: color }}
         />
         <span className="truncate font-medium">{name}</span>
       </span>
       <span className="w-20 text-right tabular-nums font-mono text-slate-800 dark:text-slate-100 font-semibold">
         {avg != null ? ms(avg) : '—'}
       </span>
-      <span className="w-16 text-right tabular-nums font-mono text-slate-500 dark:text-slate-400">
+      <span className="w-16 text-right tabular-nums font-mono text-muted-foreground">
         {jitter != null ? ms(jitter) : '—'}
       </span>
       <span
         className={cn(
           'w-14 text-right tabular-nums font-mono',
-          lossRate >= 5 ? 'text-red-500 font-semibold' : 'text-slate-500 dark:text-slate-400',
+          lossRate >= 5 ? 'text-red-500 font-semibold' : 'text-muted-foreground',
         )}
       >
         {lossRate.toFixed(1)}%
@@ -578,8 +570,8 @@ function GlassBadge({ children, className }: { children: ReactNode; className?: 
       variant="outline"
       className={cn(
         "text-[10px] px-2.5 py-0.5 rounded-full",
-        "bg-white/45 dark:bg-white/5 backdrop-blur-sm border-white/70 dark:border-white/10",
-        "text-slate-700 dark:text-slate-300 shadow-[0_1px_2px_rgba(0,0,0,0.02)] uppercase tracking-wide",
+        "bg-white/40 dark:bg-white/5 border-white/60 dark:border-white/10",
+        "text-slate-700 dark:text-slate-300 uppercase tracking-wide",
         className
       )}
     >
@@ -614,28 +606,28 @@ function CostSection({ meta }: { meta: NodeMeta }) {
     days == null || days < 0
       ? 'bg-slate-400 dark:bg-slate-600'
       : days <= 7
-        ? 'bg-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.5)]'
+        ? 'bg-red-500'
         : days <= 30
-          ? 'bg-orange-500 drop-shadow-[0_0_6px_rgba(249,115,22,0.5)]'
-          : 'bg-emerald-500 drop-shadow-[0_0_6px_rgba(16,185,129,0.5)]'
+          ? 'bg-orange-500'
+          : 'bg-emerald-500'
 
   return (
     <Section title="账单与费用">
-      <div className="space-y-1.5 pt-1">
+      <div className="space-y-2 pt-1">
         <KV k="续费月费" v={meta.price > 0 ? `${unit}${meta.price} / ${meta.priceCycle} 天` : null} />
         <KV k="到期时间" v={meta.expireTime || null} />
         <KV k="剩余天数" v={<span className={cn(daysClass, "font-bold")}>{daysLabel}</span>} />
         <KV k="剩余价值 (估)" v={meta.price > 0 ? `${unit}${value.toFixed(2)}` : null} />
 
         {meta.expireTime && days != null && (
-          <div className="mt-4 px-1.5">
-            <div className="h-2 w-full rounded-full bg-slate-200/50 dark:bg-slate-800/80 backdrop-blur-sm overflow-hidden shadow-inner">
+          <div className="mt-4 px-1">
+            <div className="h-2 w-full rounded-full bg-slate-200/60 dark:bg-slate-800/80 overflow-hidden">
               <div
-                className={cn('h-full rounded-full transition-all duration-1000 ease-out', barColor)}
+                className={cn('h-full rounded-full transition-all duration-500', barColor)}
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <div className="text-[10px] font-mono text-center text-slate-400 dark:text-slate-500 mt-1.5 opacity-80">
+            <div className="text-[10px] font-mono text-center text-muted-foreground mt-2">
               周期已使用 {progress.toFixed(0)}%
             </div>
           </div>
