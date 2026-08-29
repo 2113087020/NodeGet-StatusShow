@@ -11,8 +11,11 @@ interface Props {
 
 export function RegionFilter({ regions, total, active, onChange }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const trackRef = useRef<HTMLDivElement>(null)
   const [scrollProgress, setScrollProgress] = useState(0)
   const [canScroll, setCanScroll] = useState(false)
+  const [isScrolling, setIsScrolling] = useState(false)
+  const hideTimerRef = useRef<number | null>(null)
 
   const handleScroll = () => {
     const el = scrollRef.current
@@ -21,6 +24,12 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
     if (maxScroll > 0) {
       setScrollProgress(el.scrollLeft / maxScroll)
       setCanScroll(true)
+      setIsScrolling(true)
+
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+      hideTimerRef.current = window.setTimeout(() => {
+        setIsScrolling(false)
+      }, 1000)
     } else {
       setCanScroll(false)
     }
@@ -29,14 +38,17 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
   useEffect(() => {
     handleScroll()
     window.addEventListener('resize', handleScroll)
-    return () => window.removeEventListener('resize', handleScroll)
+    return () => {
+      window.removeEventListener('resize', handleScroll)
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    }
   }, [regions])
 
   if (regions.length === 0) return null
 
   return (
     <div className="relative w-full rounded-full liquid-lens border border-white/60 dark:border-white/10 shadow-sm overflow-hidden select-none">
-      {/* 横向滚动区域（强制隐藏原生系统滚动条） */}
+      {/* 横向滚动区域 */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -83,13 +95,19 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
         ))}
       </div>
 
-      {/* 胶囊内部底端的极细进度指示条 */}
+      {/* 内部极细指示器（无底线，可动态淡入淡出，左右完全对齐） */}
       {canScroll && (
-        <div className="absolute bottom-0.5 left-6 right-6 h-[2px] bg-black/5 dark:bg-white/5 rounded-full overflow-hidden pointer-events-none">
+        <div
+          ref={trackRef}
+          className={cn(
+            'absolute bottom-1 left-4 right-4 h-0.5 pointer-events-none transition-opacity duration-300',
+            isScrolling ? 'opacity-100' : 'opacity-0'
+          )}
+        >
           <div
-            className="h-full w-12 bg-blue-500/50 dark:bg-blue-400/50 rounded-full transition-transform duration-75 ease-out"
+            className="h-full w-8 bg-blue-500/70 dark:bg-blue-400/70 rounded-full"
             style={{
-              transform: `translateX(${scrollProgress * 200}%)`,
+              transform: `translateX(${scrollProgress * (trackRef.current ? trackRef.current.clientWidth - 32 : 0)}px)`,
             }}
           />
         </div>
