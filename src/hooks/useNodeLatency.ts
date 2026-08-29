@@ -31,11 +31,12 @@ export function useNodeLatency(
     if (!entry) return
 
     let cancelled = false
-    const windowMs = hours * 60 * 60 * 1000
+    const windowMs = hours * 3600 * 1000
 
     const fetchOnce = async () => {
+      // 保证起始和结束时间以秒级对齐
       const now = Date.now()
-      const window: [number, number] = [now - windowMs, now]
+      const window: [number, number] = [Math.floor((now - windowMs) / 1000) * 1000, now]
       setLoading(true)
 
       const [ping, tcp] = await Promise.allSettled([
