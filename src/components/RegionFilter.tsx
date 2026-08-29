@@ -14,8 +14,16 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
   const trackRef = useRef<HTMLDivElement>(null)
   const [scrollProgress, setScrollProgress] = useState(0)
   const [canScroll, setCanScroll] = useState(false)
-  const [isScrolling, setIsScrolling] = useState(false)
+  const [showIndicator, setShowIndicator] = useState(false)
   const hideTimerRef = useRef<number | null>(null)
+
+  const triggerIndicator = () => {
+    setShowIndicator(true)
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    hideTimerRef.current = window.setTimeout(() => {
+      setShowIndicator(false)
+    }, 800)
+  }
 
   const handleScroll = () => {
     const el = scrollRef.current
@@ -24,22 +32,28 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
     if (maxScroll > 0) {
       setScrollProgress(el.scrollLeft / maxScroll)
       setCanScroll(true)
-      setIsScrolling(true)
-
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
-      hideTimerRef.current = window.setTimeout(() => {
-        setIsScrolling(false)
-      }, 1000)
+      triggerIndicator()
     } else {
       setCanScroll(false)
     }
   }
 
+  const handleClick = (code: string | null) => {
+    onChange(code)
+    triggerIndicator()
+  }
+
   useEffect(() => {
-    handleScroll()
-    window.addEventListener('resize', handleScroll)
+    const el = scrollRef.current
+    if (!el) return
+    setCanScroll(el.scrollWidth > el.clientWidth)
+
+    const onResize = () => {
+      if (el) setCanScroll(el.scrollWidth > el.clientWidth)
+    }
+    window.addEventListener('resize', onResize)
     return () => {
-      window.removeEventListener('resize', handleScroll)
+      window.removeEventListener('resize', onResize)
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
     }
   }, [regions])
@@ -47,20 +61,23 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
   if (regions.length === 0) return null
 
   return (
-    <div className="relative w-full rounded-full liquid-lens border border-white/60 dark:border-white/10 shadow-sm overflow-hidden select-none">
-      {/* 横向滚动区域 */}
+    <div
+      onTouchStart={triggerIndicator}
+      className="relative w-full rounded-full liquid-lens border border-white/60 dark:border-white/10 shadow-sm overflow-hidden select-none"
+    >
+      {/* 紧凑型横向滚动区域 */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="w-full overflow-x-auto flex items-center p-1 divide-x divide-black/5 dark:divide-white/10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        className="w-full overflow-x-auto flex items-center p-0.5 divide-x divide-black/5 dark:divide-white/10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         {/* 全部 选项 */}
         <div className="flex items-center px-0.5 shrink-0">
-          <Segment selected={active === null} onClick={() => onChange(null)}>
+          <Segment selected={active === null} onClick={() => handleClick(null)}>
             <span className="font-medium">全部</span>
             <span
               className={cn(
-                'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
+                'text-[10px] font-mono px-1.5 py-0.2 rounded-full transition-colors',
                 active === null
                   ? 'bg-white/20 text-white'
                   : 'bg-black/5 dark:bg-white/10 opacity-75'
@@ -76,13 +93,13 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
           <div key={r.code} className="flex items-center px-0.5 shrink-0">
             <Segment
               selected={active === r.code}
-              onClick={() => onChange(r.code)}
+              onClick={() => handleClick(r.code)}
             >
-              <Flag code={r.code} className="w-4 h-3 drop-shadow-sm shrink-0" />
-              <span className="font-semibold tracking-wide">{r.code}</span>
+              <Flag code={r.code} className="w-3.5 h-2.5 drop-shadow-sm shrink-0" />
+              <span className="font-semibold tracking-wide text-[11px]">{r.code}</span>
               <span
                 className={cn(
-                  'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
+                  'text-[10px] font-mono px-1.5 py-0.2 rounded-full transition-colors',
                   active === r.code
                     ? 'bg-white/20 text-white'
                     : 'bg-black/5 dark:bg-white/10 opacity-75'
@@ -95,19 +112,19 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
         ))}
       </div>
 
-      {/* 内部极细指示器（无底线，可动态淡入淡出，左右完全对齐） */}
+      {/* 仅交互时显示的小指示条 */}
       {canScroll && (
         <div
           ref={trackRef}
           className={cn(
-            'absolute bottom-1 left-4 right-4 h-0.5 pointer-events-none transition-opacity duration-300',
-            isScrolling ? 'opacity-100' : 'opacity-0'
+            'absolute bottom-0.5 left-4 right-4 h-0.5 pointer-events-none transition-opacity duration-300',
+            showIndicator ? 'opacity-100' : 'opacity-0'
           )}
         >
           <div
-            className="h-full w-8 bg-blue-500/70 dark:bg-blue-400/70 rounded-full"
+            className="h-full w-7 bg-blue-500/80 dark:bg-blue-400/80 rounded-full"
             style={{
-              transform: `translateX(${scrollProgress * (trackRef.current ? trackRef.current.clientWidth - 32 : 0)}px)`,
+              transform: `translateX(${scrollProgress * (trackRef.current ? trackRef.current.clientWidth - 28 : 0)}px)`,
             }}
           />
         </div>
@@ -130,9 +147,9 @@ function Segment({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full transition-all duration-200 whitespace-nowrap active:scale-95 shrink-0',
+        'inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full transition-all duration-200 whitespace-nowrap active:scale-95 shrink-0',
         selected
-          ? 'bg-blue-500 text-white shadow-md font-medium'
+          ? 'bg-blue-500 text-white shadow-sm font-medium'
           : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
       )}
     >
