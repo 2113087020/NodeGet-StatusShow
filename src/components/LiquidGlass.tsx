@@ -20,66 +20,6 @@ const FS_SOURCE = `
   uniform vec2 uCapsulePos;
   uniform vec2 uCapsuleSize;
   uniform float uRadius;
-  uniform float uTime;
-
-  float drawDashedLine(vec2 uv, float yPos, float blockW, float gapW, float height) {
-    float totalW = blockW + gapW;
-    float xMod = mod(uv.x + 0.5 * totalW, totalW) - 0.5 * totalW;
-    float inX = step(abs(xMod), blockW * 0.5);
-    float inY = step(abs(uv.y - yPos), height * 0.5);
-    return inX * inY;
-  }
-
-  vec3 getScene(vec2 uv) {
-    vec2 p = uv * 1.4;
-    vec3 topSky = vec3(0.35, 0.28, 0.45);
-    vec3 botSky = vec3(0.48, 0.42, 0.58);
-    vec3 bg = mix(topSky, botSky, uv.y + 0.5);
-
-    float d1 = length(p - vec2(0.0, -0.35));
-    bg += vec3(0.95, 0.45, 0.45) * (0.6 / (1.0 + d1 * 2.5));
-    float d2 = length(p - vec2(0.4, -0.2));
-    bg += vec3(0.35, 0.55, 0.95) * (0.5 / (1.0 + d2 * 2.8));
-
-    float line1 = drawDashedLine(uv, 0.07, 0.065, 0.032, 0.026);
-    bg = mix(bg, vec3(1.0), line1);
-
-    float line2 = drawDashedLine(uv, -0.05, 0.045, 0.035, 0.015);
-    bg = mix(bg, vec3(0.25, 0.95, 0.55), line2 * 0.9);
-
-    float line3 = drawDashedLine(uv, -0.13, 0.045, 0.032, 0.012);
-    bg = mix(bg, vec3(0.95), line3 * 0.85);
-
-    float line4 = drawDashedLine(uv, -0.20, 0.042, 0.030, 0.010);
-    bg = mix(bg, vec3(0.7, 0.8, 0.9), line4 * 0.6);
-
-    return bg;
-  }
-
-  vec3 getSmoothFrostedScene(vec2 uv) {
-    vec3 acc = vec3(0.0);
-    float totalWeight = 0.0;
-    float blurRadius = 0.0075;
-
-    acc += getScene(uv) * 0.18;
-    totalWeight += 0.18;
-
-    for (int i = 0; i < 6; i++) {
-      float angle = float(i) * 1.047197;
-      vec2 offset = vec2(cos(angle), sin(angle)) * (blurRadius * 0.45);
-      acc += getScene(uv + offset) * 0.08;
-      totalWeight += 0.08;
-    }
-
-    for (int i = 0; i < 9; i++) {
-      float angle = float(i) * 0.69813 + 0.35;
-      vec2 offset = vec2(cos(angle), sin(angle)) * blurRadius;
-      acc += getScene(uv + offset) * 0.038;
-      totalWeight += 0.038;
-    }
-
-    return acc / totalWeight;
-  }
 
   float sdRoundedBox(vec2 p, vec2 b, float r) {
     vec2 q = abs(p) - b + r;
@@ -104,29 +44,29 @@ const FS_SOURCE = `
       float factor = clamp(1.0 - (distToEdge / bevelWidth), 0.0, 1.0);
       float curve = pow(factor, 1.8);
 
-      vec2 centerDir = p;
-      vec2 concaveOffset = centerDir * 0.028 * (1.0 - factor * 0.8);
-
+      // 1. 边缘法线方向计算
       float eps = 0.0015;
       float dx = sdRoundedBox(p + vec2(eps, 0.0), halfSize, radius) - sdRoundedBox(p - vec2(eps, 0.0), halfSize, radius);
       float dy = sdRoundedBox(p + vec2(0.0, eps), halfSize, radius) - sdRoundedBox(p - vec2(0.0, eps), halfSize, radius);
       vec2 normal = normalize(vec2(dx, dy) + 0.0001);
 
-      vec2 edgePullOffset = -normal * (0.075 * curve);
-      vec2 totalOffset = concaveOffset + edgePullOffset;
+      // 2. 纯净折射材质基底（适配透明背景）
+      vec3 glassCol = vec3(1.0, 1.0, 1.0);
 
-      float dispersion = 0.18 * curve;
-      float rCol = getSmoothFrostedScene(uv + totalOffset * (1.0 + dispersion)).r;
-      float gCol = getSmoothFrostedScene(uv + totalOffset).g;
-      float bCol = getSmoothFrostedScene(uv + totalOffset * (1.0 - dispersion)).b;
-      vec3 glassCol = vec3(rCol, gCol, bCol);
+      // 3. 菲涅尔反光与倒角高光
+      float fresnel = pow(factor, 3.0) * 0.45;
+      float rimGlow = smoothstep(0.0, 0.03, distToEdge) * (1.0 - smoothstep(0.03, 0.08, distToEdge));
+      glassCol += vec3(1.0) * (fresnel + rimGlow * 0.25);
 
-      glassCol = mix(glassCol, vec3(1.0), 0.13);
-      float fresnel = pow(factor, 3.0) * 0.36;
-      glassCol += vec3(1.0, 0.98, 0.96) * fresnel;
+      // 4. 内部微凹透镜渐变微阴影
+      float innerShadow = curve * 0.08;
+      glassCol -= vec3(innerShadow);
 
+      // 5. 亚像素抗锯齿边缘与透镜透明度控制
       float alpha = smoothstep(0.0, -0.003, d);
-      finalColor = vec4(glassCol, alpha * 0.95);
+      float opacity = mix(0.18, 0.45, factor);
+
+      finalColor = vec4(glassCol, alpha * opacity);
     }
 
     gl_FragColor = finalColor;
@@ -180,10 +120,8 @@ export function LiquidGlass({ children, className = '', radius = 24 }: Props) {
     const uCapsulePos = gl.getUniformLocation(prog, 'uCapsulePos')
     const uCapsuleSize = gl.getUniformLocation(prog, 'uCapsuleSize')
     const uRadius = gl.getUniformLocation(prog, 'uRadius')
-    const uTime = gl.getUniformLocation(prog, 'uTime')
 
     let animId: number
-    const start = performance.now()
 
     const handleResize = () => {
       if (!canvas || !containerRef.current) return
@@ -204,8 +142,6 @@ export function LiquidGlass({ children, className = '', radius = 24 }: Props) {
     handleResize()
 
     const render = () => {
-      const now = (performance.now() - start) * 0.001
-      gl.uniform1f(uTime, now)
       gl.clearColor(0, 0, 0, 0)
       gl.clear(gl.COLOR_BUFFER_BIT)
       gl.drawArrays(gl.TRIANGLES, 0, 6)
@@ -223,7 +159,7 @@ export function LiquidGlass({ children, className = '', radius = 24 }: Props) {
   return (
     <div
       ref={containerRef}
-      className={`relative overflow-hidden border border-white/60 dark:border-white/10 shadow-lg ${className}`}
+      className={`relative overflow-hidden backdrop-blur-md border border-white/70 dark:border-white/20 shadow-lg ${className}`}
     >
       <canvas
         ref={canvasRef}
