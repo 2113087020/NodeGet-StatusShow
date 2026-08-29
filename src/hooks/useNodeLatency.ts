@@ -4,12 +4,16 @@ import type { BackendPool } from '../api/pool'
 import type { TaskQueryResult } from '../types'
 
 const REFRESH_MS = 10_000
-const QUERY_TIMEOUT_MS = 20_000
+const QUERY_TIMEOUT_MS = 25_000
 
 function clean(rows: TaskQueryResult[] | undefined): TaskQueryResult[] {
-  return (rows ?? [])
-    .filter(r => r.cron_source && r.cron_source !== '未知')
-    .sort((a, b) => a.timestamp - b.timestamp)
+  const map = new Map<string, TaskQueryResult>()
+  for (const r of rows ?? []) {
+    if (!r.cron_source || r.cron_source === '未知') continue
+    const key = `${r.timestamp}-${r.cron_source}`
+    map.set(key, r)
+  }
+  return [...map.values()].sort((a, b) => a.timestamp - b.timestamp)
 }
 
 export function useNodeLatency(
@@ -31,42 +35,51 @@ export function useNodeLatency(
     if (!entry) return
 
     let cancelled = false
-    const windowMs = hours * 3600 * 1000
 
     const fetchOnce = async () => {
       const now = Date.now()
-      // 支持 13位毫秒时间戳 与 10位秒级时间戳的区间对齐
-      const fromMs = now - windowMs
-      const window: [number, number] = [fromMs, now]
+      const totalMs = hours * 3600 * 1000
+
+      // 当查询时间 > 12 小时时，拆分为 2 段并发请求，突破服务端单次数据量限制
+      const windows: [number, number][] = []
+      if (hours > 12) {
+        const mid = now - Math.floor(totalMs / 2)
+        windows.push([now - totalMs, mid])
+        windows.push([mid, now])
+      } else {
+        windows.push([now - totalMs, now])
+      }
+
       setLoading(true)
 
-      const [ping, tcp] = await Promise.allSettled([
-        taskQuery(
-          entry.client,
-          [
-            { uuid },
-            { timestamp_from_to: window },
-            { type: 'ping' },
-            { limit: 50000 },
-          ],
-          QUERY_TIMEOUT_MS,
-        ),
-        taskQuery(
-          entry.client,
-          [
-            { uuid },
-            { timestamp_from_to: window },
-            { type: 'tcp_ping' },
-            { limit: 50000 },
-          ],
-          QUERY_TIMEOUT_MS,
-        ),
-      ])
+      try {
+        const pingPromises = windows.map(w =>
+          taskQuery(
+            entry.client,
+            [{ uuid }, { timestamp_from_to: w }, { type: 'ping' }],
+            QUERY_TIMEOUT_MS,
+          ).catch(() => [] as TaskQueryResult[]),
+        )
 
-      if (cancelled) return
-      if (ping.status === 'fulfilled') setPingData(clean(ping.value))
-      if (tcp.status === 'fulfilled') setTcpData(clean(tcp.value))
-      setLoading(false)
+        const tcpPromises = windows.map(w =>
+          taskQuery(
+            entry.client,
+            [{ uuid }, { timestamp_from_to: w }, { type: 'tcp_ping' }],
+            QUERY_TIMEOUT_MS,
+          ).catch(() => [] as TaskQueryResult[]),
+        )
+
+        const [pingResults, tcpResults] = await Promise.all([
+          Promise.all(pingPromises),
+          Promise.all(tcpPromises),
+        ])
+
+        if (cancelled) return
+        setPingData(clean(pingResults.flat()))
+        setTcpData(clean(tcpResults.flat()))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
 
     fetchOnce()
