@@ -70,19 +70,19 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
       onTouchEnd={scheduleHide}
       className="relative w-full rounded-full liquid-lens border border-white/60 dark:border-white/10 shadow-sm overflow-hidden select-none"
     >
-      {/* 极致紧凑横向滚动区域 */}
+      {/* 调整为舒适饱满的高度 */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="w-full overflow-x-auto flex items-center p-0.5 divide-x divide-black/5 dark:divide-white/10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        className="w-full overflow-x-auto flex items-center px-1.5 py-1.5 divide-x divide-black/5 dark:divide-white/10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         {/* 全部 选项 */}
-        <div className="flex items-center px-0.5 shrink-0">
+        <div className="flex items-center px-1 shrink-0">
           <Segment selected={active === null} onClick={() => handleClick(null)}>
             <span className="font-medium">全部</span>
             <span
               className={cn(
-                'text-[10px] font-mono px-1 py-0.2 rounded-full transition-colors',
+                'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
                 active === null
                   ? 'bg-white/20 text-white'
                   : 'bg-black/5 dark:bg-white/10 opacity-75'
@@ -95,16 +95,16 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
 
         {/* 各国家/地区选项 */}
         {regions.map(r => (
-          <div key={r.code} className="flex items-center px-0.5 shrink-0">
+          <div key={r.code} className="flex items-center px-1 shrink-0">
             <Segment
               selected={active === r.code}
               onClick={() => handleClick(r.code)}
             >
               <Flag code={r.code} className="w-3.5 h-2.5 drop-shadow-sm shrink-0" />
-              <span className="font-semibold tracking-wide text-[11px]">{r.code}</span>
+              <span className="font-semibold tracking-wide text-xs">{r.code}</span>
               <span
                 className={cn(
-                  'text-[10px] font-mono px-1 py-0.2 rounded-full transition-colors',
+                  'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
                   active === r.code
                     ? 'bg-white/20 text-white'
                     : 'bg-black/5 dark:bg-white/10 opacity-75'
@@ -117,19 +117,19 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
         ))}
       </div>
 
-      {/* 加长版指示条 */}
+      {/* 加长版指示条：宽度占可见区域约 28% */}
       {canScroll && (
         <div
           ref={trackRef}
           className={cn(
-            'absolute bottom-0.5 left-4 right-4 h-0.5 pointer-events-none transition-opacity duration-300',
+            'absolute bottom-1 left-5 right-5 h-[3px] pointer-events-none transition-opacity duration-300',
             showIndicator ? 'opacity-100' : 'opacity-0'
           )}
         >
           <div
-            className="h-full w-11 bg-blue-500/80 dark:bg-blue-400/80 rounded-full"
+            className="h-full w-[28%] bg-blue-500/80 dark:bg-blue-400/80 rounded-full"
             style={{
-              transform: `translateX(${scrollProgress * (trackRef.current ? Math.max(0, trackRef.current.clientWidth - 44) : 0)}px)`,
+              transform: `translateX(${scrollProgress * 257}%)`,
             }}
           />
         </div>
@@ -152,7 +152,7 @@ function Segment({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-0.5 px-2 py-0.5 text-xs rounded-full transition-all duration-200 whitespace-nowrap active:scale-95 shrink-0',
+        'inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full transition-all duration-200 whitespace-nowrap active:scale-95 shrink-0',
         selected
           ? 'bg-blue-500 text-white shadow-sm font-medium'
           : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
