@@ -204,12 +204,13 @@ export function App() {
         hidden={Boolean(selected)}
       />
 
-      {/* 独立滚动区域 */}
+      {/* 独立滚动区域：flex 纵向等距排列 */}
       <div className="flex-1 w-full overflow-y-auto overscroll-contain">
-        <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 pt-20 pb-28 space-y-6">
-          {/* 全局概览卡片（国家栏上方） */}
+        <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 pt-20 pb-28 flex flex-col gap-4">
+          {/* 全局概览卡片 */}
           {!empty && <OverviewCard nodes={rawNodeList} />}
 
+          {/* 地区胶囊 */}
           {!empty && (
             <RegionFilter
               regions={regions.list}
@@ -218,7 +219,11 @@ export function App() {
               onChange={setActiveRegion}
             />
           )}
-          {!empty && <TagFilter tags={allTags} active={activeTag} onChange={setActiveTag} />}
+
+          {/* 标签过滤 */}
+          {!empty && allTags.length > 0 && (
+            <TagFilter tags={allTags} active={activeTag} onChange={setActiveTag} />
+          )}
 
           {empty && !hasErrors && (
             <div className="py-24 flex flex-col items-center gap-3 text-muted-foreground">
