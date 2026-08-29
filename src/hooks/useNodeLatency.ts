@@ -34,20 +34,31 @@ export function useNodeLatency(
     const windowMs = hours * 3600 * 1000
 
     const fetchOnce = async () => {
-      // 保证起始和结束时间以秒级对齐
       const now = Date.now()
-      const window: [number, number] = [Math.floor((now - windowMs) / 1000) * 1000, now]
+      // 支持 13位毫秒时间戳 与 10位秒级时间戳的区间对齐
+      const fromMs = now - windowMs
+      const window: [number, number] = [fromMs, now]
       setLoading(true)
 
       const [ping, tcp] = await Promise.allSettled([
         taskQuery(
           entry.client,
-          [{ uuid }, { timestamp_from_to: window }, { type: 'ping' }],
+          [
+            { uuid },
+            { timestamp_from_to: window },
+            { type: 'ping' },
+            { limit: 50000 },
+          ],
           QUERY_TIMEOUT_MS,
         ),
         taskQuery(
           entry.client,
-          [{ uuid }, { timestamp_from_to: window }, { type: 'tcp_ping' }],
+          [
+            { uuid },
+            { timestamp_from_to: window },
+            { type: 'tcp_ping' },
+            { limit: 50000 },
+          ],
           QUERY_TIMEOUT_MS,
         ),
       ])
