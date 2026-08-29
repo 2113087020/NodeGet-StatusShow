@@ -17,12 +17,16 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
   const [showIndicator, setShowIndicator] = useState(false)
   const hideTimerRef = useRef<number | null>(null)
 
-  const triggerIndicator = () => {
-    setShowIndicator(true)
+  const scheduleHide = () => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
     hideTimerRef.current = window.setTimeout(() => {
       setShowIndicator(false)
     }, 800)
+  }
+
+  const triggerIndicator = () => {
+    setShowIndicator(true)
+    scheduleHide()
   }
 
   const handleScroll = () => {
@@ -30,7 +34,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
     if (!el) return
     const maxScroll = el.scrollWidth - el.clientWidth
     if (maxScroll > 0) {
-      setScrollProgress(el.scrollLeft / maxScroll)
+      setScrollProgress(Math.min(1, Math.max(0, el.scrollLeft / maxScroll)))
       setCanScroll(true)
       triggerIndicator()
     } else {
@@ -63,9 +67,10 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
   return (
     <div
       onTouchStart={triggerIndicator}
+      onTouchEnd={scheduleHide}
       className="relative w-full rounded-full liquid-lens border border-white/60 dark:border-white/10 shadow-sm overflow-hidden select-none"
     >
-      {/* 紧凑型横向滚动区域 */}
+      {/* 极致紧凑横向滚动区域 */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -77,7 +82,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
             <span className="font-medium">全部</span>
             <span
               className={cn(
-                'text-[10px] font-mono px-1.5 py-0.2 rounded-full transition-colors',
+                'text-[10px] font-mono px-1 py-0.2 rounded-full transition-colors',
                 active === null
                   ? 'bg-white/20 text-white'
                   : 'bg-black/5 dark:bg-white/10 opacity-75'
@@ -99,7 +104,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
               <span className="font-semibold tracking-wide text-[11px]">{r.code}</span>
               <span
                 className={cn(
-                  'text-[10px] font-mono px-1.5 py-0.2 rounded-full transition-colors',
+                  'text-[10px] font-mono px-1 py-0.2 rounded-full transition-colors',
                   active === r.code
                     ? 'bg-white/20 text-white'
                     : 'bg-black/5 dark:bg-white/10 opacity-75'
@@ -112,7 +117,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
         ))}
       </div>
 
-      {/* 仅交互时显示的小指示条 */}
+      {/* 加长版指示条 */}
       {canScroll && (
         <div
           ref={trackRef}
@@ -122,9 +127,9 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
           )}
         >
           <div
-            className="h-full w-7 bg-blue-500/80 dark:bg-blue-400/80 rounded-full"
+            className="h-full w-11 bg-blue-500/80 dark:bg-blue-400/80 rounded-full"
             style={{
-              transform: `translateX(${scrollProgress * (trackRef.current ? trackRef.current.clientWidth - 28 : 0)}px)`,
+              transform: `translateX(${scrollProgress * (trackRef.current ? Math.max(0, trackRef.current.clientWidth - 44) : 0)}px)`,
             }}
           />
         </div>
@@ -147,7 +152,7 @@ function Segment({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full transition-all duration-200 whitespace-nowrap active:scale-95 shrink-0',
+        'inline-flex items-center gap-0.5 px-2 py-0.5 text-xs rounded-full transition-all duration-200 whitespace-nowrap active:scale-95 shrink-0',
         selected
           ? 'bg-blue-500 text-white shadow-sm font-medium'
           : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
