@@ -502,6 +502,7 @@ function LatencyBlock({
                 type="number"
                 domain={['dataMin', 'dataMax']}
                 scale="time"
+                tickCount={6}
                 tickFormatter={t => {
                   const d = new Date(t)
                   if (hours <= 1) {
