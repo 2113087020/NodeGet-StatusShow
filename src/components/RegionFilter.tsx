@@ -1,6 +1,6 @@
 import { cn } from '../utils/cn'
 import { Flag } from './Flag'
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 interface Props {
   regions: { code: string; count: number }[]
@@ -10,14 +10,40 @@ interface Props {
 }
 
 export function RegionFilter({ regions, total, active, onChange }: Props) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [scrollProgress, setScrollProgress] = useState(0)
+  const [canScroll, setCanScroll] = useState(false)
+
+  const handleScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    const maxScroll = el.scrollWidth - el.clientWidth
+    if (maxScroll > 0) {
+      setScrollProgress(el.scrollLeft / maxScroll)
+      setCanScroll(true)
+    } else {
+      setCanScroll(false)
+    }
+  }
+
+  useEffect(() => {
+    handleScroll()
+    window.addEventListener('resize', handleScroll)
+    return () => window.removeEventListener('resize', handleScroll)
+  }, [regions])
+
   if (regions.length === 0) return null
 
   return (
-    <div className="w-full overflow-x-auto no-scrollbar py-1">
-      <div className="inline-flex items-stretch rounded-full p-1 liquid-lens border border-white/60 dark:border-white/10 shadow-sm divide-x divide-black/5 dark:divide-white/10 select-none">
-        
+    <div className="relative w-full rounded-full liquid-lens border border-white/60 dark:border-white/10 shadow-sm overflow-hidden select-none">
+      {/* 横向滚动区域（强制隐藏原生系统滚动条） */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="w-full overflow-x-auto flex items-center p-1 divide-x divide-black/5 dark:divide-white/10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      >
         {/* 全部 选项 */}
-        <div className="flex items-center px-0.5">
+        <div className="flex items-center px-0.5 shrink-0">
           <Segment selected={active === null} onClick={() => onChange(null)}>
             <span className="font-medium">全部</span>
             <span
@@ -35,7 +61,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
 
         {/* 各国家/地区选项 */}
         {regions.map(r => (
-          <div key={r.code} className="flex items-center px-0.5">
+          <div key={r.code} className="flex items-center px-0.5 shrink-0">
             <Segment
               selected={active === r.code}
               onClick={() => onChange(r.code)}
@@ -56,6 +82,18 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
           </div>
         ))}
       </div>
+
+      {/* 胶囊内部底端的极细进度指示条 */}
+      {canScroll && (
+        <div className="absolute bottom-0.5 left-6 right-6 h-[2px] bg-black/5 dark:bg-white/5 rounded-full overflow-hidden pointer-events-none">
+          <div
+            className="h-full w-12 bg-blue-500/50 dark:bg-blue-400/50 rounded-full transition-transform duration-75 ease-out"
+            style={{
+              transform: `translateX(${scrollProgress * 200}%)`,
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }
