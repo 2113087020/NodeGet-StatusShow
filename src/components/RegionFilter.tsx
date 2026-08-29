@@ -70,7 +70,6 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
       onTouchEnd={scheduleHide}
       className="relative w-full rounded-full liquid-lens border border-white/60 dark:border-white/10 shadow-sm overflow-hidden select-none"
     >
-      {/* 调整为舒适饱满的高度 */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -85,7 +84,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
                 'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
                 active === null
                   ? 'bg-white/20 text-white'
-                  : 'bg-black/5 dark:bg-white/10 opacity-75'
+                  : 'bg-black/5 dark:bg-white/10 opacity-75',
               )}
             >
               {total}
@@ -107,7 +106,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
                   'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
                   active === r.code
                     ? 'bg-white/20 text-white'
-                    : 'bg-black/5 dark:bg-white/10 opacity-75'
+                    : 'bg-black/5 dark:bg-white/10 opacity-75',
                 )}
               >
                 {r.count}
@@ -117,13 +116,13 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
         ))}
       </div>
 
-      {/* 加长版指示条：宽度占可见区域约 28% */}
+      {/* 底部指示条 */}
       {canScroll && (
         <div
           ref={trackRef}
           className={cn(
             'absolute bottom-1 left-5 right-5 h-[3px] pointer-events-none transition-opacity duration-300',
-            showIndicator ? 'opacity-100' : 'opacity-0'
+            showIndicator ? 'opacity-100' : 'opacity-0',
           )}
         >
           <div
@@ -155,7 +154,7 @@ function Segment({
         'inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full transition-all duration-200 whitespace-nowrap active:scale-95 shrink-0',
         selected
           ? 'bg-blue-500 text-white shadow-sm font-medium'
-          : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
+          : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5',
       )}
     >
       {children}
