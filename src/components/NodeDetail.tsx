@@ -206,8 +206,8 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
                   isDark={isDark}
                 />
                 <Spark
-                  data={history}
                   dataKey="mem"
+                  data={history}
                   label="内存 %"
                   stroke="#10b981"
                   domain={[0, 100]}
@@ -215,16 +215,16 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
                   isDark={isDark}
                 />
                 <Spark
-                  data={history}
                   dataKey="netIn"
+                  data={history}
                   label="下行带宽"
                   stroke="#8b5cf6"
                   format={v => `${bytes(v)}/s`}
                   isDark={isDark}
                 />
                 <Spark
-                  data={history}
                   dataKey="netOut"
+                  data={history}
                   label="上行带宽"
                   stroke="#f59e0b"
                   format={v => `${bytes(v)}/s`}
@@ -456,11 +456,6 @@ function LatencyBlock({
   const empty = data.length === 0
   const tooltipStyle = isDark ? DARK_TOOLTIP_STYLE : TOOLTIP_STYLE
 
-  const timeDomain = useMemo(() => {
-    const now = Date.now()
-    return [now - hours * 3600 * 1000, now]
-  }, [hours, rows])
-
   const visibleSeries = series.filter(s => !hidden.has(s.name))
 
   const toggle = (name: string) =>
@@ -505,7 +500,7 @@ function LatencyBlock({
               <XAxis
                 dataKey="t"
                 type="number"
-                domain={timeDomain}
+                domain={['dataMin', 'dataMax']}
                 scale="time"
                 tickFormatter={t => {
                   const d = new Date(t)
