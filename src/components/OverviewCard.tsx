@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Activity, ArrowDown, ArrowUp, HardDriveUpload, Server } from 'lucide-react'
+import { Activity, ArrowDown, ArrowUp, HardDrive, Server } from 'lucide-react'
 import { Card } from './ui/card'
 import { bytes } from '../utils/format'
 import { deriveUsage } from '../utils/derive'
@@ -113,20 +113,20 @@ export function OverviewCard({ nodes }: Props) {
           </div>
         </div>
 
-        {/* 3. 累计总流量 */}
+        {/* 3. 累计用量 */}
         <div className="flex flex-col md:flex-row md:items-center justify-center gap-1 md:gap-3 px-1 sm:px-3">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 shrink-0">
-            <HardDriveUpload className="w-3.5 h-3.5 text-emerald-500 shrink-0 hidden sm:inline" />
+            <HardDrive className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
             <span>累计用量</span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center gap-0.5 md:gap-3 font-mono text-[11px] sm:text-xs min-w-0">
             <div className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200 tabular-nums truncate">
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-sans">出</span>
+              <span className="text-[10px] text-slate-600 dark:text-slate-300 font-sans">出</span>
               <span>{bytes(stats.totalTrans)}</span>
             </div>
-            <div className="flex items-center gap-1 font-medium text-slate-600 dark:text-slate-400 tabular-nums truncate">
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-sans">入</span>
+            <div className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200 tabular-nums truncate">
+              <span className="text-[10px] text-slate-600 dark:text-slate-300 font-sans">入</span>
               <span>{bytes(stats.totalRecv)}</span>
             </div>
           </div>
