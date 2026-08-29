@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { Activity, ArrowDown, ArrowUp, HardDriveUpload, Server } from 'lucide-react'
-import { LiquidGlass } from './LiquidGlass'
 import { bytes } from '../utils/format'
 import { deriveUsage } from '../utils/derive'
 import type { Node } from '../types'
@@ -37,9 +36,11 @@ export function OverviewCard({ nodes }: Props) {
   if (stats.total === 0) return null
 
   return (
-    <LiquidGlass className="w-full rounded-3xl px-4 py-3.5 sm:px-6 sm:py-4 select-none" radius={28}>
+    <div
+      id="liquid-overview-capsule"
+      className="w-full rounded-full px-5 py-3.5 sm:px-8 sm:py-4 select-none border border-white/60 dark:border-white/20 shadow-lg"
+    >
       <div className="grid grid-cols-3 divide-x divide-black/5 dark:divide-white/10">
-        
         {/* 1. 节点状态 */}
         <div className="flex flex-col md:flex-row md:items-center justify-center gap-1 md:gap-3 px-1 sm:px-3">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 shrink-0">
@@ -123,8 +124,7 @@ export function OverviewCard({ nodes }: Props) {
             </div>
           </div>
         </div>
-
       </div>
-    </LiquidGlass>
+    </div>
   )
 }
