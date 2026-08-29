@@ -53,9 +53,18 @@ interface Props {
   pool: BackendPool | null
 }
 
+const TIME_RANGES = [
+  { label: '1小时', hours: 1 },
+  { label: '6小时', hours: 6 },
+  { label: '12小时', hours: 12 },
+  { label: '24小时', hours: 24 },
+]
+
 export function NodeDetail({ node, onClose, showSource, pool }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isDark, setIsDark] = useState(false)
+  const [tcpHours, setTcpHours] = useState(1)
+  const [pingHours, setPingHours] = useState(1)
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'))
@@ -75,10 +84,18 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
     }
   }, [node, onClose])
 
-  const { pingData, tcpData, loading: latencyLoading } = useNodeLatency(
+  const { tcpData, loading: tcpLoading } = useNodeLatency(
     pool,
     node?.source ?? null,
     node?.uuid ?? null,
+    tcpHours,
+  )
+
+  const { pingData, loading: pingLoading } = useNodeLatency(
+    pool,
+    node?.source ?? null,
+    node?.uuid ?? null,
+    pingHours,
   )
 
   if (!node) return null
@@ -103,7 +120,6 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
       {/* 顶部悬浮导航 */}
       <div className="fixed top-0 inset-x-0 z-30 w-full px-5 sm:px-7 pt-3.5 pb-2 pointer-events-none">
         <div className="max-w-7xl mx-auto flex items-center gap-3">
-          {/* 左侧：返回悬浮球 */}
           <Button 
             variant="ghost" 
             size="icon" 
@@ -114,7 +130,6 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
             <ArrowLeft className="h-5 w-5 text-slate-800 dark:text-slate-100" />
           </Button>
 
-          {/* 右侧：长条液态透镜胶囊 */}
           <div className="pointer-events-auto flex-1 min-w-0 h-12 px-4 sm:px-5 rounded-full flex items-center gap-2.5 sm:gap-3.5 liquid-lens">
             <StatusDot online={node.online} />
             {logo && (
@@ -223,10 +238,20 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
             title="TCP 延迟"
             rows={tcpData}
             type="tcp_ping"
-            loading={latencyLoading}
+            loading={tcpLoading}
             isDark={isDark}
+            hours={tcpHours}
+            onHoursChange={setTcpHours}
           />
-          <LatencyBlock title="ICMP Ping 延迟" rows={pingData} type="ping" loading={latencyLoading} isDark={isDark} />
+          <LatencyBlock
+            title="ICMP Ping 延迟"
+            rows={pingData}
+            type="ping"
+            loading={pingLoading}
+            isDark={isDark}
+            hours={pingHours}
+            onHoursChange={setPingHours}
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Section title="系统信息">
@@ -278,10 +303,23 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
   )
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  action,
+  children,
+}: {
+  title: string
+  action?: ReactNode
+  children: ReactNode
+}) {
   return (
     <Card className="p-6 rounded-3xl liquid-lens">
-      <div className="text-xs uppercase tracking-wider font-semibold text-slate-700 dark:text-slate-300 mb-5">{title}</div>
+      <div className="flex items-center justify-between gap-2 mb-5">
+        <div className="text-xs uppercase tracking-wider font-semibold text-slate-700 dark:text-slate-300">
+          {title}
+        </div>
+        {action}
+      </div>
       {children}
     </Card>
   )
@@ -397,11 +435,21 @@ interface LatencyBlockProps {
   type: LatencyType
   loading: boolean
   isDark?: boolean
+  hours: number
+  onHoursChange: (h: number) => void
 }
 
 const ms = (v: number) => `${v.toFixed(1)} ms`
 
-function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps) {
+function LatencyBlock({
+  title,
+  rows,
+  type,
+  loading,
+  isDark,
+  hours,
+  onHoursChange,
+}: LatencyBlockProps) {
   const { data, series } = useMemo(() => buildLatencyChart(rows, type), [rows, type])
   const stats = useMemo(() => computeLatencyStats(rows, type), [rows, type])
   const [hidden, setHidden] = useState<Set<string>>(() => new Set())
@@ -418,8 +466,28 @@ function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps)
       return next
     })
 
+  const rangeSelector = (
+    <div className="inline-flex items-center rounded-full p-0.5 liquid-lens border border-white/60 dark:border-white/10 divide-x divide-black/5 dark:divide-white/10 select-none">
+      {TIME_RANGES.map(r => (
+        <button
+          key={r.hours}
+          type="button"
+          onClick={() => onHoursChange(r.hours)}
+          className={cn(
+            'px-2 py-0.5 text-[10px] font-medium rounded-full transition-all duration-200 whitespace-nowrap active:scale-95',
+            hours === r.hours
+              ? 'bg-blue-500 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'
+          )}
+        >
+          {r.label}
+        </button>
+      ))}
+    </div>
+  )
+
   return (
-    <Section title={`${title} · 近 1 小时趋势`}>
+    <Section title={title} action={rangeSelector}>
       <div className="relative h-60 bg-white/35 dark:bg-slate-950/30 rounded-2xl border border-white/80 dark:border-white/10 p-2 mb-4">
         {empty && (
           <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400">
@@ -434,7 +502,12 @@ function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps)
                 type="number"
                 domain={['dataMin', 'dataMax']}
                 scale="time"
-                tickFormatter={t => new Date(t).toLocaleTimeString()}
+                tickFormatter={t => {
+                  const d = new Date(t)
+                  return hours > 1
+                    ? `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+                    : d.toLocaleTimeString()
+                }}
                 tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }}
                 axisLine={{ stroke: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}
                 tickLine={{ stroke: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}
@@ -449,7 +522,7 @@ function LatencyBlock({ title, rows, type, loading, isDark }: LatencyBlockProps)
               />
               <Tooltip
                 contentStyle={tooltipStyle}
-                labelFormatter={t => new Date(Number(t)).toLocaleTimeString()}
+                labelFormatter={t => new Date(Number(t)).toLocaleString()}
                 formatter={(v: number) => ms(Number(v))}
               />
               {visibleSeries.map(s => (
