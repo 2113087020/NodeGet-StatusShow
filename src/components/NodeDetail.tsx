@@ -456,6 +456,11 @@ function LatencyBlock({
   const empty = data.length === 0
   const tooltipStyle = isDark ? DARK_TOOLTIP_STYLE : TOOLTIP_STYLE
 
+  const timeDomain = useMemo(() => {
+    const now = Date.now()
+    return [now - hours * 3600 * 1000, now]
+  }, [hours, rows])
+
   const visibleSeries = series.filter(s => !hidden.has(s.name))
 
   const toggle = (name: string) =>
@@ -476,7 +481,7 @@ function LatencyBlock({
           className={cn(
             'px-2 py-0.5 text-[10px] font-medium rounded-full transition-all duration-200 whitespace-nowrap active:scale-95',
             hours === r.hours
-              ? 'bg-blue-500 text-white shadow-sm'
+              ? 'bg-blue-500 text-white shadow-sm font-semibold'
               : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'
           )}
         >
@@ -500,13 +505,14 @@ function LatencyBlock({
               <XAxis
                 dataKey="t"
                 type="number"
-                domain={['dataMin', 'dataMax']}
+                domain={timeDomain}
                 scale="time"
                 tickFormatter={t => {
                   const d = new Date(t)
-                  return hours > 1
-                    ? `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
-                    : d.toLocaleTimeString()
+                  if (hours <= 1) {
+                    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                  }
+                  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
                 }}
                 tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }}
                 axisLine={{ stroke: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}
