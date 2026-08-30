@@ -19,7 +19,7 @@ interface Props {
 }
 
 /* =========================================================
- * Liquid Glass Normal Map
+ * Liquid Glass Normal Map (带尺寸缓存与高精法线计算)
  * ========================================================= */
 
 const normalMapCache = new Map<string, string>()
@@ -177,7 +177,7 @@ function generateCapsuleNormalMap(
 }
 
 /* =========================================================
- * Liquid Capsule
+ * Liquid Capsule (采用 Dock 栏同款的图层隔离与响应式观察)
  * ========================================================= */
 
 function LiquidCapsuleItem({
@@ -362,7 +362,7 @@ function LiquidCapsuleItem({
 }
 
 /* =========================================================
- * Navbar
+ * Navbar (严格保留原版顶部左右两端排版布局，应用 Dock 栏透镜效果)
  * ========================================================= */
 
 export function Navbar({
@@ -378,21 +378,18 @@ export function Navbar({
 }: Props) {
   return (
     <>
-      {/* ===================================================
-       * TOP FLOATING DOCK
-       * 纯透明无背板悬浮层，保持 3 个胶囊独立
-       * =================================================== */}
-
+      {/* 顶部悬浮操作区 */}
       <header
         className="
           fixed
-          top-3.5
-          left-0
-          right-0
-          z-[100]
+          top-0
+          inset-x-0
+          z-30
           w-full
-          px-4
-          sm:px-6
+          px-5
+          sm:px-7
+          pt-3.5
+          pb-2
           pointer-events-none
           box-border
         "
@@ -401,22 +398,14 @@ export function Navbar({
           WebkitTransform: 'translate3d(0, 0, 0)',
         }}
       >
-        <div
-          className="
-            w-full
-            max-w-7xl
-            mx-auto
-            flex
-            items-center
-            justify-between
-            gap-2.5
-          "
-        >
-          {/* 左侧：Logo 胶囊（独立胶囊） */}
-          <div className="pointer-events-auto shrink-0">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          {/* 左侧：Logo 胶囊 + 自适应搜索胶囊 */}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            {/* 1. Logo 胶囊 */}
             <LiquidCapsuleItem
               href="./"
               className="
+                pointer-events-auto
                 h-12
                 px-4
                 sm:px-5
@@ -424,6 +413,7 @@ export function Navbar({
                 flex
                 items-center
                 gap-3
+                shrink-0
                 overflow-hidden
                 hover:opacity-95
                 active:scale-95
@@ -438,10 +428,10 @@ export function Navbar({
                   className="
                     w-7
                     h-7
-                    shrink-0
                     rounded-lg
                     object-contain
                     drop-shadow-sm
+                    shrink-0
                   "
                 />
               ) : (
@@ -449,7 +439,6 @@ export function Navbar({
                   className="
                     w-7
                     h-7
-                    shrink-0
                     rounded-xl
                     bg-blue-500/20
                     text-blue-600
@@ -461,52 +450,35 @@ export function Navbar({
                     justify-center
                     font-bold
                     text-sm
+                    shrink-0
                   "
                 >
                   {siteName.slice(0, 1)}
                 </div>
               )}
-
-              <span
-                className="
-                  min-w-0
-                  truncate
-                  font-bold
-                  text-base
-                  text-slate-800
-                  dark:text-slate-100
-                  tracking-tight
-                "
-              >
+              <span className="font-bold text-base text-slate-800 dark:text-slate-100 tracking-tight truncate">
                 {siteName}
               </span>
             </LiquidCapsuleItem>
-          </div>
 
-          {/* 中间：自适应搜索框胶囊（独立胶囊） */}
-          <div className="pointer-events-auto flex-1 max-w-xs sm:max-w-sm min-w-0">
+            {/* 2. 搜索框胶囊 */}
             <LiquidCapsuleItem
               className="
+                pointer-events-auto
+                flex-1
+                min-w-[72px]
+                max-w-[220px]
+                sm:max-w-xs
                 h-12
-                w-full
+                px-3
                 rounded-full
-                px-3.5
                 flex
                 items-center
                 gap-2
                 overflow-hidden
               "
             >
-              <SearchIcon
-                className="
-                  h-4
-                  w-4
-                  shrink-0
-                  text-slate-500
-                  dark:text-slate-400
-                "
-              />
-
+              <SearchIcon className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
               <input
                 type="text"
                 name="site-search"
@@ -523,20 +495,19 @@ export function Navbar({
                 data-lpignore="true"
                 data-bwignore="true"
                 className="
-                  min-w-0
                   w-full
                   bg-transparent
-                  border-none
-                  outline-none
                   text-sm
                   font-medium
                   text-slate-800
                   dark:text-slate-100
                   placeholder:text-slate-400
                   dark:placeholder:text-slate-500
+                  border-none
+                  outline-none
+                  min-w-0
                 "
               />
-
               {query && (
                 <Button
                   variant="ghost"
@@ -559,7 +530,7 @@ export function Navbar({
             </LiquidCapsuleItem>
           </div>
 
-          {/* 右侧：排序悬浮球（独立胶囊） */}
+          {/* 3. 右上角：独立排序悬浮球 */}
           <div className="pointer-events-auto shrink-0">
             <LiquidCapsuleItem
               className="
@@ -575,10 +546,7 @@ export function Navbar({
                 duration-200
               "
             >
-              <SortMenu
-                value={sort}
-                onChange={onSort}
-              />
+              <SortMenu value={sort} onChange={onSort} />
             </LiquidCapsuleItem>
           </div>
         </div>
@@ -594,24 +562,20 @@ export function Navbar({
         "
       />
 
-      {/* ===================================================
-       * BOTTOM DOCK
-       * =================================================== */}
-
+      {/* 底部悬浮 Dock 栏 */}
       {!hidden && (
         <div
           className="
             fixed
-            left-0
-            right-0
             bottom-6
-            z-[100]
-            w-full
+            inset-x-0
+            z-30
             flex
             justify-center
             items-center
-            pointer-events-none
+            gap-4
             px-4
+            pointer-events-none
             animate-in
             fade-in
             duration-200
@@ -621,67 +585,39 @@ export function Navbar({
             WebkitTransform: 'translate3d(0, 0, 0)',
           }}
         >
-          <div
-            className="
-              flex
-              items-center
-              justify-center
-              gap-4
-              shrink-0
-            "
-          >
-            {/* 主题切换 */}
-            <div
+          <div className="pointer-events-auto">
+            <LiquidCapsuleItem
               className="
-                pointer-events-auto
                 w-14
                 h-14
-                shrink-0
+                p-0
+                rounded-full
+                flex
+                items-center
+                justify-center
+                active:scale-95
+                transition-all
               "
             >
-              <LiquidCapsuleItem
-                className="
-                  w-14
-                  h-14
-                  p-0
-                  rounded-full
-                  flex
-                  items-center
-                  justify-center
-                  active:scale-95
-                  transition-all
-                "
-              >
-                <ThemeToggle />
-              </LiquidCapsuleItem>
-            </div>
+              <ThemeToggle />
+            </LiquidCapsuleItem>
+          </div>
 
-            {/* 视图切换 */}
-            <div
+          <div className="pointer-events-auto">
+            <LiquidCapsuleItem
               className="
-                pointer-events-auto
                 h-14
-                shrink-0
+                px-2
+                rounded-full
+                flex
+                items-center
+                overflow-hidden
+                active:scale-95
+                transition-all
               "
             >
-              <LiquidCapsuleItem
-                className="
-                  h-14
-                  px-2
-                  rounded-full
-                  flex
-                  items-center
-                  overflow-hidden
-                  active:scale-95
-                  transition-all
-                "
-              >
-                <ViewToggle
-                  value={view}
-                  onChange={onView}
-                />
-              </LiquidCapsuleItem>
-            </div>
+              <ViewToggle value={view} onChange={onView} />
+            </LiquidCapsuleItem>
           </div>
         </div>
       )}
