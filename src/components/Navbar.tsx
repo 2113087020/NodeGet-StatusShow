@@ -18,14 +18,8 @@ interface Props {
   hidden?: boolean
 }
 
-// 核心：支持物理像素级偏移校准的法线贴图生成器
+// 核心：解耦长条胶囊的高宽比冲突，上下左右严格 1:1 对称发丝透镜
 function generateCapsuleNormalMap(width: number, height: number, radius: number) {
-  // ==========================================
-  // 偏移校准微调台 (若偏右则减小 BIAS_X，若偏上则增大 BIAS_Y)
-  // ==========================================
-  const BIAS_X = -0.06 // 抵消偏右，强制向左拉回
-  const BIAS_Y = +0.06 // 抵消偏上，强制向下拉回
-
   const offscreen = document.createElement('canvas')
   offscreen.width = width
   offscreen.height = height
@@ -39,14 +33,17 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const halfH = height / 2
   const bX = Math.max(halfW - radius, 0)
   const bY = Math.max(halfH - radius, 0)
-  const bevelWidth = radius * 0.70
+  
+  // 核心修复 1：将倒角厚度固定为 10px 发丝环，避免垂直方向因 h=48px 导致上下倒角重叠抵消
+  const bevelWidth = Math.min(10, radius * 0.45)
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
+      // 严格像素中心点对齐
       const px = x - halfW + 0.5
       const py = y - halfH + 0.5
 
-      // 1. SDF 圆角矩形距离
+      // 1. SDF 胶囊圆角矩形精准物理距离
       const qx = Math.abs(px) - bX
       const qy = Math.abs(py) - bY
       const maxQx = Math.max(qx, 0)
@@ -60,10 +57,8 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 
       if (d <= 0.0) {
         const distToEdge = -d
-        const factor = Math.min(Math.max(distToEdge / bevelWidth, 0.0), 1.0)
-        const curve = Math.pow(1.0 - factor, 1.6)
 
-        // 法线
+        // 2. 几何精确法线 (严格向外法向量)
         let nx = 0
         let ny = 0
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
@@ -75,25 +70,32 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // 全局微凹
-        const normR = Math.min(Math.sqrt((px / halfW) ** 2 + (py / halfH) ** 2), 1.0)
-        const concaveIntensity = Math.sin(normR * Math.PI * 0.5)
-        const concaveX = (px / halfW) * 0.20 * (1.0 - concaveIntensity * 0.5)
-        const concaveY = (py / halfH) * 0.20 * (1.0 - concaveIntensity * 0.5)
+        // 3. 内部全局微凹透镜 (纯径向凸凹，不破坏上下平衡)
+        const rx = px / halfW
+        const ry = py / halfH
+        const radialDist = Math.min(Math.sqrt(rx * rx + ry * ry), 1.0)
+        const concaveFactor = (1.0 - radialDist) * 0.12
+        const concaveX = rx * concaveFactor
+        const concaveY = ry * concaveFactor
 
-        // 边缘吸扯
-        const pullX = -nx * (0.80 * curve)
-        const pullY = -ny * (0.80 * curve)
+        // 4. 边缘正弦环透镜 (上下左右严格对称的向外强吸扯)
+        let pullX = 0
+        let pullY = 0
+        if (distToEdge <= bevelWidth) {
+          const t = distToEdge / bevelWidth
+          const wave = Math.sin(t * Math.PI) // 边缘 0 -> 中间峰值 -> 内部 0
+          pullX = -nx * (0.85 * wave)
+          pullY = -ny * (0.85 * wave)
+        }
 
-        // 边缘羽化
-        const edgeFade = Math.min(Math.max(distToEdge / 2.0, 0.0), 1.0)
+        // 5. 边缘防溢出羽化
+        const edgeFade = Math.min(Math.max(distToEdge / 1.5, 0.0), 1.0)
 
-        // 叠加基准校准偏移
-        offsetX = (concaveX + pullX + BIAS_X) * edgeFade
-        offsetY = (concaveY + pullY + BIAS_Y) * edgeFade
+        offsetX = (concaveX + pullX) * edgeFade
+        offsetY = (concaveY + pullY) * edgeFade
       }
 
-      // 严格量化
+      // 严格量化，128 为绝对零点
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
       const gVal = Math.min(Math.max(Math.round(128 + offsetY * 127), 0), 255)
 
@@ -170,6 +172,7 @@ function LiquidCapsuleItem({
         <defs>
           <filter id={filterId} x="0" y="0" width="100%" height="100%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse">
             {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
+            {/* scale 设为 24，杜绝过度扭曲造成的上下偏心 */}
             <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={24} xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
