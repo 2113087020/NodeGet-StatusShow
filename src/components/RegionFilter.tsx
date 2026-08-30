@@ -274,8 +274,8 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
                 className={cn(
                   'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
                   active === null
-                    ? 'bg-black/10 dark:bg-white/20 text-slate-900 dark:text-slate-100'
-                    : 'bg-black/5 dark:bg-white/10 opacity-75',
+                    ? 'bg-black/10 dark:bg-white/15 text-slate-900 dark:text-slate-100'
+                    : 'bg-black/5 dark:bg-white/10 opacity-70',
                 )}
               >
                 {total}
@@ -296,8 +296,8 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
                   className={cn(
                     'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
                     active === r.code
-                      ? 'bg-black/10 dark:bg-white/20 text-slate-900 dark:text-slate-100'
-                      : 'bg-black/5 dark:bg-white/10 opacity-75',
+                      ? 'bg-black/10 dark:bg-white/15 text-slate-900 dark:text-slate-100'
+                      : 'bg-black/5 dark:bg-white/10 opacity-70',
                   )}
                 >
                   {r.count}
@@ -307,7 +307,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
           ))}
         </div>
 
-        {/* 底部滑动进度指示条（毛玻璃风格） */}
+        {/* 底部滑动指示条 */}
         {canScroll && (
           <div
             ref={trackRef}
@@ -317,7 +317,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
             )}
           >
             <div
-              className="h-full w-[28%] bg-white/60 dark:bg-white/30 backdrop-blur-sm border border-white/40 dark:border-white/20 shadow-sm rounded-full"
+              className="h-full w-[28%] bg-black/20 dark:bg-white/20 rounded-full"
               style={{
                 transform: `translateX(${scrollProgress * 257}%)`,
               }}
@@ -345,8 +345,8 @@ function Segment({
       className={cn(
         'inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full transition-all duration-200 whitespace-nowrap active:scale-95 shrink-0',
         selected
-          ? 'bg-white/40 dark:bg-white/15 text-slate-900 dark:text-slate-100 border border-white/60 dark:border-white/20 shadow-sm font-semibold backdrop-blur-md'
-          : 'text-slate-700 dark:text-slate-300 border border-transparent hover:bg-black/5 dark:hover:bg-white/5',
+          ? 'bg-black/10 dark:bg-white/15 text-slate-900 dark:text-slate-100 font-semibold shadow-inner'
+          : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5',
       )}
     >
       {children}
