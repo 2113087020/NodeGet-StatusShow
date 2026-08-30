@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useId } from 'react'
 import { Search as SearchIcon, X } from 'lucide-react'
 import { ViewToggle } from './ViewToggle'
 import { ThemeToggle } from './ThemeToggle'
@@ -19,20 +19,14 @@ interface Props {
 }
 
 /* =========================================================
- * Liquid Glass Normal Map
+ * Liquid Glass Normal Map 生成器（带尺寸优化与缓存机制）
  * ========================================================= */
-
 const normalMapCache = new Map<string, string>()
 
-function generateCapsuleNormalMap(
-  width: number,
-  height: number,
-  radius: number,
-) {
-  if (typeof document === 'undefined') {
-    return ''
-  }
+function generateCapsuleNormalMap(width: number, height: number, radius: number) {
+  if (typeof document === 'undefined') return ''
 
+  // 内部纹理限宽，优化移动端开销
   const maxTextureSize = 256
   const ratio = Math.min(1, maxTextureSize / Math.max(width, height))
   const canvasWidth = Math.max(32, Math.round(width * ratio))
@@ -46,7 +40,6 @@ function generateCapsuleNormalMap(
   const canvas = document.createElement('canvas')
   canvas.width = canvasWidth
   canvas.height = canvasHeight
-
   const ctx = canvas.getContext('2d')
   if (!ctx) return ''
 
@@ -64,6 +57,7 @@ function generateCapsuleNormalMap(
       const px = x - halfW
       const py = y - halfH
 
+      // 1. SDF 计算
       const qx = Math.abs(px) - bX
       const qy = Math.abs(py) - bY
       const maxQx = Math.max(qx, 0)
@@ -80,9 +74,11 @@ function generateCapsuleNormalMap(
         const factor = Math.min(Math.max(1 - distToEdge / Math.max(bevelWidth, 0.001), 0), 1)
         const curve = Math.pow(factor, 1.8)
 
+        // 2. 全局微凹
         const concaveX = (px / halfW) * 0.22 * (1 - factor * 0.8)
         const concaveY = (py / halfH) * 0.22 * (1 - factor * 0.8)
 
+        // 3. 几何法线
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
         let nx = 0
         let ny = 0
@@ -95,6 +91,7 @@ function generateCapsuleNormalMap(
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
+        // 4. 上下拉扯参数与防溢出羽化
         const yPullScale = py > 0 ? 0.65 : 0.85
         const pullX = -nx * (0.85 * curve)
         const pullY = -ny * (yPullScale * curve)
@@ -122,9 +119,8 @@ function generateCapsuleNormalMap(
 }
 
 /* =========================================================
- * 独立液态玻璃胶囊组件
+ * 液态透镜胶囊组件
  * ========================================================= */
-
 function LiquidCapsuleItem({
   children,
   className = '',
@@ -157,11 +153,13 @@ function LiquidCapsuleItem({
         const rect = element.getBoundingClientRect()
         const width = Math.round(rect.width)
         const height = Math.round(rect.height)
+
         if (width <= 0 || height <= 0) return
         if (width === lastWidth && height === lastHeight) return
 
         lastWidth = width
         lastHeight = height
+
         const radius = Math.min(width, height) / 2
         const url = generateCapsuleNormalMap(width, height, radius)
         setMapUrl(url)
@@ -202,13 +200,7 @@ function LiquidCapsuleItem({
           filterUnits="objectBoundingBox"
           colorInterpolationFilters="sRGB"
         >
-          {mapUrl && (
-            <feImage
-              href={mapUrl}
-              preserveAspectRatio="none"
-              result="lensMap"
-            />
-          )}
+          {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
           {mapUrl && (
             <feDisplacementMap
               in="SourceGraphic"
@@ -237,24 +229,12 @@ function LiquidCapsuleItem({
     ...style,
   }
 
-  const commonClass = `
-    relative
-    border
-    border-white/20
-    dark:border-white/10
-    bg-white/[0.03]
-    dark:bg-black/[0.10]
-    transition-shadow
-    duration-300
-    ${className}
-  `
+  const commonClass = `relative border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] transition-shadow duration-300 ${className}`
 
   const content = (
     <>
       {filterElement}
-      <span className="relative z-10 flex items-center w-full h-full">
-        {children}
-      </span>
+      <span className="relative z-10 flex items-center h-full w-full">{children}</span>
     </>
   )
 
@@ -285,9 +265,8 @@ function LiquidCapsuleItem({
 }
 
 /* =========================================================
- * Navbar
+ * 导航栏组件
  * ========================================================= */
-
 export function Navbar({
   siteName,
   logo,
@@ -301,257 +280,92 @@ export function Navbar({
 }: Props) {
   return (
     <>
-      {/* 顶部悬浮容器：绝无背景、绝无边框、纯透明通道 */}
+      {/* 顶部固定栏 */}
       <header
-        className="
-          fixed
-          top-0
-          inset-x-0
-          z-[100]
-          w-full
-          px-5
-          sm:px-7
-          pt-3.5
-          pb-2
-          pointer-events-none
-          bg-transparent
-          border-none
-          shadow-none
-        "
+        className="fixed top-0 inset-x-0 z-30 w-full px-5 sm:px-7 pt-3.5 pb-2 pointer-events-none"
         style={{
           transform: 'translate3d(0, 0, 0)',
           WebkitTransform: 'translate3d(0, 0, 0)',
         }}
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 bg-transparent border-none">
-          {/* 左侧：Logo 胶囊 + 自适应搜索胶囊 */}
-          <div className="flex items-center gap-2.5 flex-1 min-w-0 bg-transparent">
-            {/* 1. Logo 独立胶囊 */}
-            <div className="pointer-events-auto shrink-0">
-              <LiquidCapsuleItem
-                href="./"
-                className="
-                  h-12
-                  px-4
-                  sm:px-5
-                  rounded-full
-                  flex
-                  items-center
-                  gap-3
-                  overflow-hidden
-                  hover:opacity-95
-                  active:scale-95
-                  transition-all
-                  duration-200
-                "
-              >
-                {logo ? (
-                  <img
-                    src={logo}
-                    alt=""
-                    className="
-                      w-7
-                      h-7
-                      shrink-0
-                      rounded-lg
-                      object-contain
-                      drop-shadow-sm
-                    "
-                  />
-                ) : (
-                  <div
-                    className="
-                      w-7
-                      h-7
-                      shrink-0
-                      rounded-xl
-                      bg-blue-500/20
-                      text-blue-600
-                      dark:text-blue-400
-                      border
-                      border-blue-400/40
-                      flex
-                      items-center
-                      justify-center
-                      font-bold
-                      text-sm
-                    "
-                  >
-                    {siteName.slice(0, 1)}
-                  </div>
-                )}
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          {/* 左侧：Logo 胶囊 + 搜索胶囊 */}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <LiquidCapsuleItem
+              href="./"
+              className="pointer-events-auto h-12 px-4 sm:px-5 rounded-full flex items-center gap-3 shrink-0 overflow-hidden hover:opacity-95 active:scale-95 transition-all duration-200"
+            >
+              {logo ? (
+                <img src={logo} alt="" className="w-7 h-7 rounded-lg object-contain drop-shadow-sm shrink-0" />
+              ) : (
+                <div className="w-7 h-7 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-400/40 flex items-center justify-center font-bold text-sm shrink-0">
+                  {siteName.slice(0, 1)}
+                </div>
+              )}
+              <span className="font-bold text-base text-slate-800 dark:text-slate-100 tracking-tight truncate">
+                {siteName}
+              </span>
+            </LiquidCapsuleItem>
 
-                <span
-                  className="
-                    min-w-0
-                    truncate
-                    font-bold
-                    text-base
-                    text-slate-800
-                    dark:text-slate-100
-                    tracking-tight
-                  "
+            <LiquidCapsuleItem className="pointer-events-auto flex-1 min-w-[72px] max-w-[220px] sm:max-w-xs h-12 px-3 rounded-full flex items-center gap-2 overflow-hidden">
+              <SearchIcon className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
+              <input
+                type="text"
+                name="site-search"
+                id="site-search"
+                value={query}
+                onChange={e => onQuery(e.target.value)}
+                placeholder="搜索..."
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                data-form-type="other"
+                data-1p-ignore="true"
+                data-lpignore="true"
+                data-bwignore="true"
+                className="w-full bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border-none outline-none min-w-0"
+              />
+              {query && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 rounded-full text-slate-500 hover:bg-white/40 active:scale-95"
+                  onClick={() => onQuery('')}
+                  aria-label="清空"
                 >
-                  {siteName}
-                </span>
-              </LiquidCapsuleItem>
-            </div>
-
-            {/* 2. 搜索框独立胶囊 */}
-            <div className="pointer-events-auto flex-1 min-w-[72px] max-w-[220px] sm:max-w-xs">
-              <LiquidCapsuleItem
-                className="
-                  h-12
-                  w-full
-                  px-3
-                  rounded-full
-                  flex
-                  items-center
-                  gap-2
-                  overflow-hidden
-                "
-              >
-                <SearchIcon className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
-                <input
-                  type="text"
-                  name="site-search"
-                  id="site-search"
-                  value={query}
-                  onChange={e => onQuery(e.target.value)}
-                  placeholder="搜索..."
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  data-form-type="other"
-                  data-1p-ignore="true"
-                  data-lpignore="true"
-                  data-bwignore="true"
-                  className="
-                    w-full
-                    bg-transparent
-                    text-sm
-                    font-medium
-                    text-slate-800
-                    dark:text-slate-100
-                    placeholder:text-slate-400
-                    dark:placeholder:text-slate-500
-                    border-none
-                    outline-none
-                    min-w-0
-                  "
-                />
-                {query && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="
-                      h-6
-                      w-6
-                      shrink-0
-                      rounded-full
-                      text-slate-500
-                      hover:bg-white/40
-                      active:scale-95
-                    "
-                    onClick={() => onQuery('')}
-                    aria-label="清空"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </LiquidCapsuleItem>
-            </div>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </LiquidCapsuleItem>
           </div>
 
-          {/* 3. 右上角：独立排序悬浮球 */}
-          <div className="pointer-events-auto shrink-0">
-            <LiquidCapsuleItem
-              className="
-                w-12
-                h-12
-                p-0
-                rounded-full
-                flex
-                items-center
-                justify-center
-                active:scale-95
-                transition-all
-                duration-200
-              "
-            >
+          {/* 右侧：排序按钮 */}
+          <div className="pointer-events-auto shrink-0 w-12 h-12">
+            <LiquidCapsuleItem className="w-12 h-12 p-0 rounded-full flex items-center justify-center active:scale-95 transition-all duration-200">
               <SortMenu value={sort} onChange={onSort} />
             </LiquidCapsuleItem>
           </div>
         </div>
       </header>
 
-      {/* 顶部占位流高度 */}
-      <div
-        aria-hidden="true"
-        className="
-          h-[68px]
-          w-full
-          shrink-0
-        "
-      />
-
       {/* 底部悬浮 Dock 栏 */}
       {!hidden && (
         <div
-          className="
-            fixed
-            bottom-6
-            inset-x-0
-            z-[100]
-            flex
-            justify-center
-            items-center
-            gap-4
-            px-4
-            pointer-events-none
-            animate-in
-            fade-in
-            duration-200
-          "
+          className="fixed bottom-6 inset-x-0 z-30 flex justify-center items-center gap-4 px-4 pointer-events-none animate-in fade-in duration-200"
           style={{
             transform: 'translate3d(0, 0, 0)',
             WebkitTransform: 'translate3d(0, 0, 0)',
           }}
         >
-          {/* 主题切换独立胶囊 */}
-          <div className="pointer-events-auto shrink-0">
-            <LiquidCapsuleItem
-              className="
-                w-14
-                h-14
-                p-0
-                rounded-full
-                flex
-                items-center
-                justify-center
-                active:scale-95
-                transition-all
-              "
-            >
+          <div className="pointer-events-auto w-14 h-14 shrink-0">
+            <LiquidCapsuleItem className="w-14 h-14 p-0 rounded-full flex items-center justify-center active:scale-95 transition-all">
               <ThemeToggle />
             </LiquidCapsuleItem>
           </div>
 
-          {/* 视图切换独立胶囊 */}
-          <div className="pointer-events-auto shrink-0">
-            <LiquidCapsuleItem
-              className="
-                h-14
-                px-2
-                rounded-full
-                flex
-                items-center
-                overflow-hidden
-                active:scale-95
-                transition-all
-              "
-            >
+          <div className="pointer-events-auto h-14 shrink-0">
+            <LiquidCapsuleItem className="h-14 px-2 rounded-full flex items-center overflow-hidden active:scale-95 transition-all">
               <ViewToggle value={view} onChange={onView} />
             </LiquidCapsuleItem>
           </div>
