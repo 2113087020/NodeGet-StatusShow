@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Search as SearchIcon, X } from 'lucide-react'
 import { ViewToggle } from './ViewToggle'
 import { ThemeToggle } from './ThemeToggle'
@@ -18,32 +18,169 @@ interface Props {
   hidden?: boolean
 }
 
-/**
- * ============================================================
- * 液态玻璃胶囊
- * ============================================================
- *
- * 这一版故意不再使用：
- *   - SVG feDisplacementMap
- *   - feImage
- *   - backdrop-filter: url(...)
- *   - Canvas normal map
- *
- * 因为这些方案在 Android Chrome / WebView 上容易造成：
- *   1. 背景内容偏移
- *   2. 顶部文字被拉扯
- *   3. 上下滚动时出现不同步
- *   4. 胶囊边缘产生奇怪的采样
- *
- * 现在采用纯 CSS：
- *   - 极低透明度
- *   - 轻微 blur
- *   - saturate
- *   - inset 高光
- *   - 细边框
- *
- * 这样能保持“玻璃”的感觉，同时让后面的文字透出来。
- */
+/* =========================================================
+ * Liquid Glass Normal Map
+ * ========================================================= */
+
+const normalMapCache = new Map<string, string>()
+
+function generateCapsuleNormalMap(
+  width: number,
+  height: number,
+  radius: number,
+) {
+  if (typeof document === 'undefined') {
+    return ''
+  }
+
+  const maxTextureSize = 256
+
+  const ratio = Math.min(
+    1,
+    maxTextureSize / Math.max(width, height),
+  )
+
+  const canvasWidth = Math.max(
+    32,
+    Math.round(width * ratio),
+  )
+
+  const canvasHeight = Math.max(
+    32,
+    Math.round(height * ratio),
+  )
+
+  const canvasRadius = Math.min(
+    radius * ratio,
+    canvasWidth / 2,
+    canvasHeight / 2,
+  )
+
+  const cacheKey = `${canvasWidth}:${canvasHeight}:${Math.round(canvasRadius)}`
+
+  const cached = normalMapCache.get(cacheKey)
+
+  if (cached) {
+    return cached
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = canvasWidth
+  canvas.height = canvasHeight
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    return ''
+  }
+
+  const imageData = ctx.createImageData(canvasWidth, canvasHeight)
+  const data = imageData.data
+
+  const halfW = canvasWidth / 2
+  const halfH = canvasHeight / 2
+
+  const bX = Math.max(halfW - canvasRadius, 0)
+  const bY = Math.max(halfH - canvasRadius, 0)
+
+  const bevelWidth = canvasRadius * 0.75
+
+  for (let y = 0; y < canvasHeight; y++) {
+    for (let x = 0; x < canvasWidth; x++) {
+      const px = x - halfW
+      const py = y - halfH
+
+      const qx = Math.abs(px) - bX
+      const qy = Math.abs(py) - bY
+
+      const maxQx = Math.max(qx, 0)
+      const maxQy = Math.max(qy, 0)
+
+      const outsideDist = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
+      const insideDist = Math.min(Math.max(qx, qy), 0)
+
+      const d = outsideDist + insideDist - canvasRadius
+
+      let offsetX = 0
+      let offsetY = 0
+
+      if (d <= 0) {
+        const distToEdge = -d
+
+        const factor = Math.min(
+          Math.max(
+            1 - distToEdge / Math.max(bevelWidth, 0.001),
+            0,
+          ),
+          1,
+        )
+
+        const curve = Math.pow(factor, 1.8)
+
+        const concaveX =
+          (px / halfW) *
+          0.22 *
+          (1 - factor * 0.8)
+
+        const concaveY =
+          (py / halfH) *
+          0.22 *
+          (1 - factor * 0.8)
+
+        const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
+
+        let nx = 0
+        let ny = 0
+
+        if (len > 0.001) {
+          nx = (maxQx / len) * Math.sign(px)
+          ny = (maxQy / len) * Math.sign(py)
+        } else {
+          nx = Math.abs(px) > Math.abs(py) ? Math.sign(px) : 0
+          ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
+        }
+
+        const yPullScale = py > 0 ? 0.65 : 0.85
+
+        const pullX = -nx * (0.85 * curve)
+        const pullY = -ny * (yPullScale * curve)
+
+        const edgeFade = Math.min(Math.max(distToEdge / 2, 0), 1)
+
+        offsetX = (concaveX + pullX) * edgeFade
+        offsetY = (concaveY + pullY) * edgeFade
+      }
+
+      const rVal = Math.min(
+        Math.max(Math.round(128 + offsetX * 127), 0),
+        255,
+      )
+
+      const gVal = Math.min(
+        Math.max(Math.round(128 + offsetY * 127), 0),
+        255,
+      )
+
+      const index = (y * canvasWidth + x) * 4
+
+      data[index] = rVal
+      data[index + 1] = gVal
+      data[index + 2] = 128
+      data[index + 3] = 255
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0)
+
+  const url = canvas.toDataURL('image/png')
+  normalMapCache.set(cacheKey, url)
+
+  return url
+}
+
+/* =========================================================
+ * Liquid Capsule
+ * ========================================================= */
+
 function LiquidCapsuleItem({
   children,
   className = '',
@@ -57,103 +194,156 @@ function LiquidCapsuleItem({
   onClick?: () => void
   href?: string
 }) {
+  const containerRef = useRef<HTMLDivElement | HTMLAnchorElement>(null)
+
+  const rawId = useId()
+  const filterId = `liquid-lens-${rawId.replace(/[^a-zA-Z0-9-_]/g, '')}`
+
+  const [mapUrl, setMapUrl] = useState('')
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) {
+      return
+    }
+
+    let frameId = 0
+    let lastWidth = 0
+    let lastHeight = 0
+
+    const updateMap = () => {
+      cancelAnimationFrame(frameId)
+
+      frameId = requestAnimationFrame(() => {
+        const rect = element.getBoundingClientRect()
+        const width = Math.round(rect.width)
+        const height = Math.round(rect.height)
+
+        if (width <= 0 || height <= 0) {
+          return
+        }
+
+        if (width === lastWidth && height === lastHeight) {
+          return
+        }
+
+        lastWidth = width
+        lastHeight = height
+
+        const radius = Math.min(width, height) / 2
+        const url = generateCapsuleNormalMap(width, height, radius)
+
+        setMapUrl(url)
+      })
+    }
+
+    updateMap()
+
+    const resizeObserver = new ResizeObserver(updateMap)
+    resizeObserver.observe(element)
+
+    return () => {
+      cancelAnimationFrame(frameId)
+      resizeObserver.disconnect()
+    }
+  }, [])
+
+  const filterElement = (
+    <svg
+      aria-hidden="true"
+      width="0"
+      height="0"
+      className="fixed pointer-events-none"
+      style={{
+        position: 'fixed',
+        width: 0,
+        height: 0,
+        overflow: 'hidden',
+        opacity: 0,
+      }}
+    >
+      <defs>
+        <filter
+          id={filterId}
+          x="0%"
+          y="0%"
+          width="100%"
+          height="100%"
+          filterUnits="objectBoundingBox"
+          colorInterpolationFilters="sRGB"
+        >
+          {mapUrl && (
+            <feImage
+              href={mapUrl}
+              preserveAspectRatio="none"
+              result="lensMap"
+            />
+          )}
+
+          {mapUrl && (
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="lensMap"
+              scale={26}
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          )}
+        </filter>
+      </defs>
+    </svg>
+  )
+
   const glassStyle: React.CSSProperties = {
-    /*
-     * 非常低的白色底。
-     *
-     * 这是这版“透字”的关键。
-     * 不要再提高到 0.15 / 0.2，否则背景会变成一块白色塑料。
-     */
-    backgroundColor: 'rgba(255, 255, 255, 0.055)',
+    backdropFilter: mapUrl
+      ? `url(#${filterId}) blur(1px)`
+      : 'blur(8px)',
 
-    /*
-     * 只做非常轻的模糊。
-     *
-     * 你原来的 WebGL 方案最终实际上只有约 1px 的 blur，
-     * 所以这里也保持在非常轻的范围。
-     */
-    backdropFilter: 'blur(1.5px) saturate(125%)',
-    WebkitBackdropFilter: 'blur(1.5px) saturate(125%)',
+    WebkitBackdropFilter: mapUrl
+      ? `url(#${filterId}) blur(1px)`
+      : 'blur(8px)',
 
-    /*
-     * 玻璃边缘。
-     * 上边缘稍亮，模拟玻璃受光。
-     */
-    border: '1px solid rgba(255, 255, 255, 0.30)',
-
-    /*
-     * 玻璃内部高光 + 极轻阴影。
-     *
-     * 不使用厚重阴影，否则移动端看起来会像普通卡片。
-     */
     boxShadow: `
-      inset 0 1px 1px rgba(255, 255, 255, 0.42),
-      inset 0 -1px 1px rgba(255, 255, 255, 0.08),
-      inset 0 0 10px rgba(255, 255, 255, 0.025),
-      0 6px 20px -8px rgba(0, 0, 0, 0.16)
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
+      inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
+      0 8px 24px -4px rgba(0, 0, 0, 0.06)
     `,
 
-    /*
-     * 防止浏览器把 backdrop-filter 层和内容产生奇怪的合成。
-     */
     isolation: 'isolate',
-
-    /*
-     * 保持圆角内部干净。
-     */
-    overflow: 'hidden',
-
-    /*
-     * 不允许浏览器因为滤镜产生额外布局。
-     */
-    transform: 'translateZ(0)',
-
+    transform: 'translate3d(0, 0, 0)',
+    WebkitTransform: 'translate3d(0, 0, 0)',
     ...style,
   }
 
-  const commonProps = {
-    className: `
-      relative
-      ${className}
-    `,
-    style: glassStyle,
-    onClick,
-  }
+  const commonClass = `
+    relative
+    border
+    border-white/20
+    dark:border-white/10
+    bg-white/[0.03]
+    dark:bg-black/[0.10]
+    transition-shadow
+    duration-300
+    ${className}
+  `
 
   const content = (
     <>
-      {/*
-       * 非常轻的一层顶部玻璃反光。
-       *
-       * 它不会遮住后面的内容，只是让胶囊边缘
-       * 更接近你截图里的真实玻璃效果。
-       */}
-      <span
-        aria-hidden="true"
-        className="
-          pointer-events-none
-          absolute
-          inset-x-0
-          top-0
-          h-px
-          bg-white/35
-          opacity-70
-        "
-      />
-
-      {children}
+      {filterElement}
+      <span className="relative z-10 flex items-center w-full h-full">
+        {children}
+      </span>
     </>
   )
 
   if (href) {
     return (
       <a
+        ref={containerRef as React.Ref<HTMLAnchorElement>}
         href={href}
-        {...commonProps}
-        className={`
-          block
-          ${commonProps.className}
-        `}
+        className={commonClass}
+        style={glassStyle}
+        onClick={onClick}
       >
         {content}
       </a>
@@ -161,17 +351,21 @@ function LiquidCapsuleItem({
   }
 
   return (
-    <div {...commonProps}>
+    <div
+      ref={containerRef as React.Ref<HTMLDivElement>}
+      className={commonClass}
+      style={glassStyle}
+      onClick={onClick}
+    >
       {content}
     </div>
   )
 }
 
-/**
- * ============================================================
+/* =========================================================
  * Navbar
- * ============================================================
- */
+ * ========================================================= */
+
 export function Navbar({
   siteName,
   logo,
@@ -183,79 +377,49 @@ export function Navbar({
   onSort,
   hidden,
 }: Props) {
-  /*
-   * 这里不再有任何 map / canvas / SVG / displacement state。
-   *
-   * 这样 Navbar 本身完全不会参与页面内容的位移。
-   */
-
   return (
     <>
-      {/* ======================================================
-          顶部三个玻璃胶囊
-          ====================================================== */}
+      {/* ===================================================
+       * TOP NAVBAR DOCK
+       * 与底部 Dock 完全一致的居中悬浮结构
+       * =================================================== */}
 
       <header
         className="
           fixed
-          top-0
-          inset-x-0
-          z-30
+          top-3.5
+          left-0
+          right-0
+          z-[100]
           w-full
-          px-5
-          sm:px-7
-          pt-3.5
-          pb-2
+          flex
+          justify-center
+          items-center
           pointer-events-none
+          px-4
         "
+        style={{
+          transform: 'translate3d(0, 0, 0)',
+          WebkitTransform: 'translate3d(0, 0, 0)',
+        }}
       >
-        <div
-          className="
-            max-w-7xl
-            mx-auto
-            flex
-            items-center
-            justify-between
-            gap-2.5
-          "
-        >
-          {/* ==================================================
-              左侧区域
-
-              Logo + 搜索
-
-              保持你原本的布局：
-              Logo | 搜索
-              ================================================== */}
-
-          <div
-            className="
-              flex
-              items-center
-              gap-2.5
-              flex-1
-              min-w-0
-            "
-          >
-            {/* ==================================================
-                1. Logo 胶囊
-                ================================================== */}
-
+        <div className="flex items-center justify-center gap-3 shrink-0 max-w-full">
+          {/* 左侧：Logo 胶囊 */}
+          <div className="pointer-events-auto shrink-0">
             <LiquidCapsuleItem
               href="./"
               className="
-                pointer-events-auto
-                h-12
+                h-14
                 px-4
                 sm:px-5
                 rounded-full
                 flex
                 items-center
                 gap-3
-                shrink-0
+                overflow-hidden
                 hover:opacity-95
-                active:scale-[0.97]
-                transition-transform
+                active:scale-95
+                transition-all
                 duration-200
               "
             >
@@ -266,10 +430,10 @@ export function Navbar({
                   className="
                     w-7
                     h-7
+                    shrink-0
                     rounded-lg
                     object-contain
                     drop-shadow-sm
-                    shrink-0
                   "
                 />
               ) : (
@@ -277,6 +441,7 @@ export function Navbar({
                   className="
                     w-7
                     h-7
+                    shrink-0
                     rounded-xl
                     bg-blue-500/20
                     text-blue-600
@@ -288,7 +453,6 @@ export function Navbar({
                     justify-center
                     font-bold
                     text-sm
-                    shrink-0
                   "
                 >
                   {siteName.slice(0, 1)}
@@ -297,51 +461,42 @@ export function Navbar({
 
               <span
                 className="
+                  min-w-0
+                  truncate
                   font-bold
                   text-base
                   text-slate-800
                   dark:text-slate-100
                   tracking-tight
-                  truncate
-                  whitespace-nowrap
                 "
               >
                 {siteName}
               </span>
             </LiquidCapsuleItem>
+          </div>
 
-            {/* ==================================================
-                2. 搜索胶囊
-
-                关键：
-                - 不再 max-w-xs 强行限制太死
-                - mobile 保证不会把 Logo 挤变形
-                - 搜索区域自己吃掉剩余空间
-                ================================================== */}
-
+          {/* 中间：搜索框胶囊 */}
+          <div className="pointer-events-auto shrink-0">
             <LiquidCapsuleItem
               className="
-                pointer-events-auto
-                flex-1
-                min-w-0
-                w-0
-                max-w-[220px]
-                sm:max-w-xs
-                h-12
-                px-3
+                h-14
+                w-36
+                sm:w-52
                 rounded-full
+                px-3.5
                 flex
                 items-center
                 gap-2
+                overflow-hidden
               "
             >
               <SearchIcon
                 className="
                   h-4
                   w-4
-                  text-slate-600/80
-                  dark:text-slate-300/75
                   shrink-0
+                  text-slate-500
+                  dark:text-slate-400
                 "
               />
 
@@ -355,24 +510,23 @@ export function Navbar({
                 autoComplete="off"
                 autoCorrect="off"
                 autoCapitalize="off"
-                spellCheck="false"
+                spellCheck={false}
                 data-form-type="other"
                 data-1p-ignore="true"
                 data-lpignore="true"
                 data-bwignore="true"
                 className="
-                  w-full
                   min-w-0
+                  w-full
                   bg-transparent
+                  border-none
+                  outline-none
                   text-sm
                   font-medium
                   text-slate-800
                   dark:text-slate-100
-                  placeholder:text-slate-500/75
-                  dark:placeholder:text-slate-300/60
-                  border-none
-                  outline-none
-                  appearance-none
+                  placeholder:text-slate-400
+                  dark:placeholder:text-slate-500
                 "
               />
 
@@ -385,9 +539,8 @@ export function Navbar({
                     w-6
                     shrink-0
                     rounded-full
-                    text-slate-600/80
-                    dark:text-slate-300/80
-                    hover:bg-white/20
+                    text-slate-500
+                    hover:bg-white/40
                     active:scale-95
                   "
                   onClick={() => onQuery('')}
@@ -399,29 +552,19 @@ export function Navbar({
             </LiquidCapsuleItem>
           </div>
 
-          {/* ==================================================
-              3. 右侧排序胶囊
-
-              单独固定尺寸。
-              不参与左侧搜索区域的伸缩。
-              ================================================== */}
-
-          <div
-            className="
-              pointer-events-auto
-              shrink-0
-            "
-          >
+          {/* 右侧：Sort 独立悬浮球 */}
+          <div className="pointer-events-auto shrink-0">
             <LiquidCapsuleItem
               className="
-                w-12
-                h-12
+                w-14
+                h-14
+                p-0
                 rounded-full
                 flex
                 items-center
                 justify-center
-                active:scale-[0.97]
-                transition-transform
+                active:scale-95
+                transition-all
                 duration-200
               "
             >
@@ -434,69 +577,83 @@ export function Navbar({
         </div>
       </header>
 
-      {/* ======================================================
-          底部 Dock
-          ====================================================== */}
+      {/* 顶部占位流高度 */}
+      <div
+        aria-hidden="true"
+        className="
+          h-[76px]
+          w-full
+          shrink-0
+        "
+      />
+
+      {/* ===================================================
+       * BOTTOM DOCK
+       * =================================================== */}
 
       {!hidden && (
         <div
           className="
             fixed
+            left-0
+            right-0
             bottom-6
-            inset-x-0
-            z-30
+            z-[100]
+            w-full
             flex
             justify-center
             items-center
-            gap-4
-            px-4
             pointer-events-none
+            px-4
             animate-in
             fade-in
             duration-200
           "
+          style={{
+            transform: 'translate3d(0, 0, 0)',
+            WebkitTransform: 'translate3d(0, 0, 0)',
+          }}
         >
-          {/* ==================================================
-              夜间模式
-              ================================================== */}
+          <div className="flex items-center justify-center gap-4 shrink-0">
+            {/* THEME */}
+            <div className="pointer-events-auto w-14 h-14 shrink-0">
+              <LiquidCapsuleItem
+                className="
+                  w-14
+                  h-14
+                  p-0
+                  rounded-full
+                  flex
+                  items-center
+                  justify-center
+                  active:scale-95
+                  transition-all
+                "
+              >
+                <ThemeToggle />
+              </LiquidCapsuleItem>
+            </div>
 
-          <div className="pointer-events-auto">
-            <LiquidCapsuleItem
-              className="
-                w-14
-                h-14
-                rounded-full
-                flex
-                items-center
-                justify-center
-                active:scale-[0.97]
-                transition-transform
-                duration-200
-              "
-            >
-              <ThemeToggle />
-            </LiquidCapsuleItem>
-          </div>
-
-          {/* ==================================================
-              View Dock
-              ================================================== */}
-
-          <div className="pointer-events-auto">
-            <LiquidCapsuleItem
-              className="
-                h-14
-                px-2
-                rounded-full
-                flex
-                items-center
-              "
-            >
-              <ViewToggle
-                value={view}
-                onChange={onView}
-              />
-            </LiquidCapsuleItem>
+            {/* VIEW TOGGLE */}
+            <div className="pointer-events-auto h-14 shrink-0">
+              <LiquidCapsuleItem
+                className="
+                  h-14
+                  px-2
+                  rounded-full
+                  flex
+                  items-center
+                  overflow-hidden
+                  active:scale-95
+                  transition-all
+                "
+              >
+                <ViewToggle
+                  value={view}
+                  onChange={onView}
+                />
+              </LiquidCapsuleItem>
+            </div>
           </div>
         </div>
       )}
