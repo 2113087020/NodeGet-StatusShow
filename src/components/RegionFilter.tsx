@@ -141,7 +141,6 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
         lastWidth = width
         lastHeight = height
 
-        // 胶囊胶体圆角取高度的一半
         const radius = height / 2
         const url = generateCapsuleNormalMap(width, height, radius)
         setMapUrl(url)
@@ -275,7 +274,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
                 className={cn(
                   'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
                   active === null
-                    ? 'bg-white/20 text-white'
+                    ? 'bg-black/10 dark:bg-white/20 text-slate-900 dark:text-slate-100'
                     : 'bg-black/5 dark:bg-white/10 opacity-75',
                 )}
               >
@@ -297,7 +296,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
                   className={cn(
                     'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
                     active === r.code
-                      ? 'bg-white/20 text-white'
+                      ? 'bg-black/10 dark:bg-white/20 text-slate-900 dark:text-slate-100'
                       : 'bg-black/5 dark:bg-white/10 opacity-75',
                   )}
                 >
@@ -308,7 +307,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
           ))}
         </div>
 
-        {/* 底部滑动进度指示条 */}
+        {/* 底部滑动进度指示条（毛玻璃风格） */}
         {canScroll && (
           <div
             ref={trackRef}
@@ -318,7 +317,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
             )}
           >
             <div
-              className="h-full w-[28%] bg-blue-500/80 dark:bg-blue-400/80 rounded-full"
+              className="h-full w-[28%] bg-white/60 dark:bg-white/30 backdrop-blur-sm border border-white/40 dark:border-white/20 shadow-sm rounded-full"
               style={{
                 transform: `translateX(${scrollProgress * 257}%)`,
               }}
@@ -346,8 +345,8 @@ function Segment({
       className={cn(
         'inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full transition-all duration-200 whitespace-nowrap active:scale-95 shrink-0',
         selected
-          ? 'bg-blue-500 text-white shadow-sm font-medium'
-          : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5',
+          ? 'bg-white/40 dark:bg-white/15 text-slate-900 dark:text-slate-100 border border-white/60 dark:border-white/20 shadow-sm font-semibold backdrop-blur-md'
+          : 'text-slate-700 dark:text-slate-300 border border-transparent hover:bg-black/5 dark:hover:bg-white/5',
       )}
     >
       {children}
