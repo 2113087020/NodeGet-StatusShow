@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useId } from 'react'
 import * as echarts from 'echarts'
 import { ChevronRight, Globe } from 'lucide-react'
-import { Card } from './ui/card'
 import { Flag } from './Flag'
 import { StatusDot } from './StatusDot'
 import { bytes, pct } from '../utils/format'
@@ -45,6 +44,104 @@ interface Props {
   onOpen?: (uuid: string) => void
 }
 
+/* =========================================================
+ * Liquid Glass Normal Map 生成器
+ * ========================================================= */
+const normalMapCache = new Map<string, string>()
+
+function generateCapsuleNormalMap(width: number, height: number, radius: number) {
+  if (typeof document === 'undefined') return ''
+
+  const maxTextureSize = 256
+  const ratio = Math.min(1, maxTextureSize / Math.max(width, height))
+  const canvasWidth = Math.max(32, Math.round(width * ratio))
+  const canvasHeight = Math.max(32, Math.round(height * ratio))
+  const canvasRadius = Math.min(radius * ratio, canvasWidth / 2, canvasHeight / 2)
+
+  const cacheKey = `${canvasWidth}:${canvasHeight}:${Math.round(canvasRadius)}`
+  const cached = normalMapCache.get(cacheKey)
+  if (cached) return cached
+
+  const canvas = document.createElement('canvas')
+  canvas.width = canvasWidth
+  canvas.height = canvasHeight
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return ''
+
+  const imageData = ctx.createImageData(canvasWidth, canvasHeight)
+  const data = imageData.data
+
+  const halfW = canvasWidth / 2
+  const halfH = canvasHeight / 2
+  const bX = Math.max(halfW - canvasRadius, 0)
+  const bY = Math.max(halfH - canvasRadius, 0)
+  const bevelWidth = canvasRadius * 0.75
+
+  for (let y = 0; y < canvasHeight; y++) {
+    for (let x = 0; x < canvasWidth; x++) {
+      const px = x - halfW
+      const py = y - halfH
+
+      const qx = Math.abs(px) - bX
+      const qy = Math.abs(py) - bY
+      const maxQx = Math.max(qx, 0)
+      const maxQy = Math.max(qy, 0)
+      const outsideDist = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
+      const insideDist = Math.min(Math.max(qx, qy), 0)
+      const d = outsideDist + insideDist - canvasRadius
+
+      let offsetX = 0
+      let offsetY = 0
+
+      if (d <= 0) {
+        const distToEdge = -d
+        const factor = Math.min(Math.max(1 - distToEdge / Math.max(bevelWidth, 0.001), 0), 1)
+        const curve = Math.pow(factor, 1.8)
+
+        const concaveX = (px / halfW) * 0.22 * (1 - factor * 0.8)
+        const concaveY = (py / halfH) * 0.22 * (1 - factor * 0.8)
+
+        const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
+        let nx = 0
+        let ny = 0
+
+        if (len > 0.001) {
+          nx = (maxQx / len) * Math.sign(px)
+          ny = (maxQy / len) * Math.sign(py)
+        } else {
+          nx = Math.abs(px) > Math.abs(py) ? Math.sign(px) : 0
+          ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
+        }
+
+        const yPullScale = py > 0 ? 0.65 : 0.85
+        const pullX = -nx * (0.85 * curve)
+        const pullY = -ny * (yPullScale * curve)
+        const edgeFade = Math.min(Math.max(distToEdge / 2, 0), 1)
+
+        offsetX = (concaveX + pullX) * edgeFade
+        offsetY = (concaveY + pullY) * edgeFade
+      }
+
+      const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
+      const gVal = Math.min(Math.max(Math.round(128 + offsetY * 127), 0), 255)
+
+      const index = (y * canvasWidth + x) * 4
+      data[index] = rVal
+      data[index + 1] = gVal
+      data[index + 2] = 128
+      data[index + 3] = 255
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0)
+  const url = canvas.toDataURL('image/png')
+  normalMapCache.set(cacheKey, url)
+  return url
+}
+
+/* =========================================================
+ * 地图加载服务
+ * ========================================================= */
 function ensureMap() {
   if (!mapPromise) {
     mapPromise = fetch(GEO_URL)
@@ -69,8 +166,51 @@ function ensureMap() {
 export function WorldMap({ nodes, onOpen }: Props) {
   const [ready, setReady] = useState(false)
   const [selectedA2, setSelectedA2] = useState<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const chartRef = useRef<echarts.ECharts | null>(null)
+
+  const rawId = useId()
+  const filterId = `liquid-lens-${rawId.replace(/[^a-zA-Z0-9-_]/g, '')}`
+  const [mapUrl, setMapUrl] = useState('')
+
+  // 尺寸监听与 Normal Map 更新
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+
+    let frameId = 0
+    let lastWidth = 0
+    let lastHeight = 0
+
+    const updateMap = () => {
+      cancelAnimationFrame(frameId)
+      frameId = requestAnimationFrame(() => {
+        const rect = element.getBoundingClientRect()
+        const width = Math.round(rect.width)
+        const height = Math.round(rect.height)
+
+        if (width <= 0 || height <= 0) return
+        if (width === lastWidth && height === lastHeight) return
+
+        lastWidth = width
+        lastHeight = height
+
+        const radius = 24
+        const url = generateCapsuleNormalMap(width, height, radius)
+        setMapUrl(url)
+      })
+    }
+
+    updateMap()
+    const resizeObserver = new ResizeObserver(updateMap)
+    resizeObserver.observe(element)
+
+    return () => {
+      cancelAnimationFrame(frameId)
+      resizeObserver.disconnect()
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -236,91 +376,150 @@ export function WorldMap({ nodes, onOpen }: Props) {
   }, [])
 
   return (
-    <Card className="p-4 sm:p-6 rounded-3xl liquid-lens space-y-4">
-      {/* 顶部标题栏 */}
-      <div className="flex items-center justify-between px-1">
-        <div className="text-xs uppercase tracking-wider font-semibold text-slate-700 dark:text-slate-300">
-          全球节点地理分布
-        </div>
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>{totalOnline} / {totalNodes} 节点在线</span>
-        </div>
-      </div>
-
-      {/* 地图视口 */}
-      <div
-        className="relative w-full rounded-2xl border border-white/60 dark:border-white/10 bg-white/20 dark:bg-slate-900/30 backdrop-blur-md overflow-hidden"
-        style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}
+    <div
+      ref={containerRef}
+      className="relative p-4 sm:p-6 rounded-3xl border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] shadow-sm select-none transition-shadow duration-300"
+      style={{
+        backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+        WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+        boxShadow: `
+          inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
+          inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
+          0 8px 24px -4px rgba(0, 0, 0, 0.06)
+        `,
+        isolation: 'isolate',
+        transform: 'translate3d(0, 0, 0)',
+        WebkitTransform: 'translate3d(0, 0, 0)',
+      }}
+    >
+      <svg
+        aria-hidden="true"
+        width="0"
+        height="0"
+        className="fixed pointer-events-none"
+        style={{
+          position: 'fixed',
+          width: 0,
+          height: 0,
+          overflow: 'hidden',
+          opacity: 0,
+        }}
       >
-        <div ref={wrapRef} className="absolute inset-0" />
-      </div>
-
-      {/* 下方联动区域抽屉 */}
-      <div className="rounded-2xl p-3.5 sm:p-4 bg-white/50 dark:bg-white/5 border border-white/70 dark:border-white/10 space-y-3">
-        <div className="flex items-center justify-between pb-1 border-b border-black/5 dark:border-white/10">
-          <div className="flex items-center gap-2">
-            {activeEntry.a2 === 'ALL' ? (
-              <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-            ) : (
-              <Flag code={activeEntry.a2} className="shrink-0 drop-shadow-sm" />
+        <defs>
+          <filter
+            id={filterId}
+            x="0%"
+            y="0%"
+            width="100%"
+            height="100%"
+            filterUnits="objectBoundingBox"
+            colorInterpolationFilters="sRGB"
+          >
+            {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
+            {mapUrl && (
+              <feDisplacementMap
+                in="SourceGraphic"
+                in2="lensMap"
+                scale={26}
+                xChannelSelector="R"
+                yChannelSelector="G"
+              />
             )}
-            <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
-              {activeEntry.cname}
-            </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              ({activeEntry.online} 在线{activeEntry.offline > 0 ? ` · ${activeEntry.offline} 离线` : ''})
-            </span>
+          </filter>
+        </defs>
+      </svg>
+
+      <div className="relative z-10 w-full flex flex-col gap-4">
+        {/* 顶部标题栏 */}
+        <div className="flex items-center justify-between px-1">
+          <div className="text-xs uppercase tracking-wider font-semibold text-slate-700 dark:text-slate-300">
+            全球节点地理分布
           </div>
-          <div className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
-            {activeEntry.a2}
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>{totalOnline} / {totalNodes} 节点在线</span>
           </div>
         </div>
 
-        {/* 节点明细列表 */}
-        <div className="space-y-2 max-h-64 overflow-y-auto overscroll-contain pr-0.5">
-          {activeEntry.nodes.map(n => {
-            const u = deriveUsage(n)
-            const logo = distroLogo(n)
-            const nodeRegion = n.meta?.region?.trim().toUpperCase()
-            return (
-              <div
-                key={n.uuid}
-                onClick={() => onOpen?.(n.uuid)}
-                className="group flex items-center justify-between p-2.5 rounded-xl bg-white/70 dark:bg-white/5 hover:bg-white/95 dark:hover:bg-white/10 border border-white/80 dark:border-white/10 shadow-sm cursor-pointer transition-all duration-150 active:scale-[0.99]"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <StatusDot online={n.online} />
-                  {nodeRegion && <Flag code={nodeRegion} className="w-3.5 shrink-0 drop-shadow-xs" />}
-                  {logo && (
-                    <img src={logo} alt="" className="w-4 h-4 shrink-0 object-contain drop-shadow-sm" loading="lazy" />
-                  )}
-                  <div className="min-w-0">
-                    <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
-                      {displayName(n)}
-                    </div>
-                    <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
-                      CPU {pct(u.cpu)} · 内存 {pct(u.mem)} · 磁盘 {pct(u.disk)}
-                    </div>
-                  </div>
-                </div>
+        {/* 地图视口 */}
+        <div
+          className="relative w-full rounded-2xl border border-white/20 dark:border-white/10 bg-black/[0.02] dark:bg-slate-950/20 overflow-hidden"
+          style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}
+        >
+          <div ref={wrapRef} className="absolute inset-0" />
+        </div>
 
-                <div className="flex items-center gap-2 shrink-0 font-mono text-[11px] text-right">
-                  <div>
-                    <div className="font-semibold text-slate-700 dark:text-slate-300">
-                      ↑ {bytes(u.netOut || 0)}/s
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                      ↓ {bytes(u.netIn || 0)}/s
+        {/* 下方联动区域抽屉 */}
+        <div className="rounded-2xl p-3.5 sm:p-4 bg-black/[0.02] dark:bg-white/[0.03] border border-white/20 dark:border-white/10 space-y-3 shadow-inner">
+          <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/10">
+            <div className="flex items-center gap-2">
+              {activeEntry.a2 === 'ALL' ? (
+                <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+              ) : (
+                <Flag code={activeEntry.a2} className="shrink-0 drop-shadow-sm" />
+              )}
+              <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                {activeEntry.cname}
+              </span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                ({activeEntry.online} 在线{activeEntry.offline > 0 ? ` · ${activeEntry.offline} 离线` : ''})
+              </span>
+            </div>
+            <div className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
+              {activeEntry.a2}
+            </div>
+          </div>
+
+          {/* 节点明细列表 */}
+          <div className="space-y-2 max-h-64 overflow-y-auto overscroll-contain pr-0.5">
+            {activeEntry.nodes.map(n => {
+              const u = deriveUsage(n)
+              const logo = distroLogo(n)
+              const nodeRegion = n.meta?.region?.trim().toUpperCase()
+              return (
+                <div
+                  key={n.uuid}
+                  onClick={() => onOpen?.(n.uuid)}
+                  className="group flex items-center justify-between p-2.5 rounded-xl bg-white/40 dark:bg-white/5 hover:bg-black/5 dark:hover:bg-white/10 border border-white/40 dark:border-white/10 shadow-xs cursor-pointer transition-all duration-150 active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <StatusDot online={n.online} />
+                    {nodeRegion && <Flag code={nodeRegion} className="w-3.5 shrink-0 drop-shadow-xs" />}
+                    {logo && (
+                      <img
+                        src={logo}
+                        alt=""
+                        className="w-4 h-4 shrink-0 object-contain drop-shadow-sm"
+                        loading="lazy"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
+                        {displayName(n)}
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                        CPU {pct(u.cpu)} · 内存 {pct(u.mem)} · 磁盘 {pct(u.disk)}
+                      </div>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-transform" />
+
+                  <div className="flex items-center gap-2 shrink-0 font-mono text-[11px] text-right">
+                    <div>
+                      <div className="font-semibold text-slate-700 dark:text-slate-300">
+                        ↑ {bytes(u.netOut || 0)}/s
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                        ↓ {bytes(u.netIn || 0)}/s
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       </div>
-    </Card>
+    </div>
   )
 }
