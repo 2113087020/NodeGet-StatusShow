@@ -8,35 +8,43 @@ export function Background() {
         WebkitTransform: 'translate3d(0, 0, 0)',
       }}
     >
-      {/* 1. 基础环境底色：浅色模式采用高级冷白灰，深色模式采用深邃暗夜黑 */}
-      <div className="absolute inset-0 bg-[#f6f8fc] dark:bg-[#07090e] transition-colors duration-700" />
+      {/* 基础底色 */}
+      <div className="absolute inset-0 bg-[#eef2f9] dark:bg-[#080b11] transition-colors duration-500" />
 
-      {/* 2. 顶部主光斑（冰蓝 -> 珊瑚粉），给顶部 Navbar 带来晶莹冷暖折射 */}
+      {/* 结构 1：顶部强反差光弧（紫粉到青蓝），穿过 Navbar 和 顶部卡片产生剧烈折射 */}
       <div
-        className="absolute -top-[25%] -left-[15%] w-[85vw] h-[85vw] max-w-[900px] max-h-[900px] rounded-full blur-[90px] sm:blur-[130px] opacity-75 dark:opacity-25 transition-all duration-700"
+        className="absolute -top-[10%] left-[-10%] w-[120vw] h-[55vh] rounded-[100%] blur-[45px] sm:blur-[60px] opacity-80 dark:opacity-40 transition-all duration-500"
         style={{
-          background: 'radial-gradient(circle at 40% 40%, #60a5fa 0%, #ec4899 50%, transparent 80%)',
+          background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 40%, #3b82f6 75%, #06b6d4 100%)',
         }}
       />
 
-      {/* 3. 中右上光斑（极光青 -> 鸢尾紫），增强卡片与表格右侧的高光层次 */}
+      {/* 结构 2：中左侧高光球（高饱和青绿），使列表滚动时左侧边缘产生强反光 */}
       <div
-        className="absolute top-[20%] -right-[20%] w-[75vw] h-[75vw] max-w-[800px] max-h-[800px] rounded-full blur-[100px] sm:blur-[140px] opacity-65 dark:opacity-20 transition-all duration-700"
+        className="absolute top-[35%] -left-[15%] w-[65vw] h-[65vw] max-w-[500px] max-h-[500px] rounded-full blur-[40px] sm:blur-[55px] opacity-75 dark:opacity-35 transition-all duration-500"
         style={{
-          background: 'radial-gradient(circle at center, #06b6d4 0%, #8b5cf6 60%, transparent 80%)',
+          background: 'radial-gradient(circle at center, #10b981 0%, #3b82f6 65%, transparent 85%)',
         }}
       />
 
-      {/* 4. 底部托底光斑（薄荷翠绿 -> 蔚蓝），为底部悬浮 Dock 提供饱满的通透感 */}
+      {/* 结构 3：中右侧明暗分割光带（橙粉暖色），制造冷暖交界线 */}
       <div
-        className="absolute -bottom-[20%] left-[10%] w-[85vw] h-[70vw] max-w-[950px] max-h-[750px] rounded-full blur-[110px] sm:blur-[150px] opacity-65 dark:opacity-20 transition-all duration-700"
+        className="absolute top-[45%] -right-[15%] w-[60vw] h-[60vw] max-w-[480px] max-h-[480px] rounded-full blur-[40px] sm:blur-[50px] opacity-70 dark:opacity-30 transition-all duration-500"
         style={{
-          background: 'radial-gradient(circle at center, #10b981 0%, #3b82f6 55%, transparent 80%)',
+          background: 'radial-gradient(circle at center, #f97316 0%, #ec4899 60%, transparent 80%)',
         }}
       />
 
-      {/* 5. 微质感层：增强透镜对背景像素采样的折射层次 */}
-      <div className="absolute inset-0 bg-white/[0.015] dark:bg-black/[0.2] backdrop-contrast-[1.02]" />
+      {/* 结构 4：底部 Dock 强光托底（蔚蓝到极光紫） */}
+      <div
+        className="absolute -bottom-[15%] left-[5%] w-[90vw] h-[45vh] rounded-[100%] blur-[45px] sm:blur-[60px] opacity-80 dark:opacity-35 transition-all duration-500"
+        style={{
+          background: 'linear-gradient(90deg, #3b82f6 0%, #6366f1 50%, #ec4899 100%)',
+        }}
+      />
+
+      {/* 微对比度强化遮罩 */}
+      <div className="absolute inset-0 bg-transparent dark:bg-black/20" />
     </div>
   )
 }
