@@ -59,7 +59,6 @@ function generateCapsuleNormalMap(
   const cacheKey = `${canvasWidth}:${canvasHeight}:${Math.round(canvasRadius)}`
 
   const cached = normalMapCache.get(cacheKey)
-
   if (cached) {
     return cached
   }
@@ -379,40 +378,59 @@ export function Navbar({
 }: Props) {
   return (
     <>
-      {/* ===================================================
-       * TOP NAVBAR DOCK
-       * 与底部 Dock 完全一致的居中悬浮结构
-       * =================================================== */}
-
+      {/* 顶部悬浮操作区 */}
       <header
         className="
           fixed
-          top-3.5
+          top-0
           left-0
           right-0
           z-[100]
           w-full
-          flex
-          justify-center
-          items-center
+          px-5
+          sm:px-7
+          pt-3.5
+          pb-2
           pointer-events-none
-          px-4
+          box-border
         "
         style={{
           transform: 'translate3d(0, 0, 0)',
           WebkitTransform: 'translate3d(0, 0, 0)',
         }}
       >
-        <div className="flex items-center justify-center gap-3 shrink-0 max-w-full">
-          {/* 左侧：Logo 胶囊 */}
-          <div className="pointer-events-auto shrink-0">
+        <div
+          className="
+            w-full
+            max-w-7xl
+            mx-auto
+            flex
+            items-center
+            min-w-0
+            gap-3
+          "
+        >
+          {/* 左侧：Logo 胶囊 + 自适应搜索胶囊 */}
+          <div
+            className="
+              flex
+              items-center
+              min-w-0
+              flex-1
+              gap-2.5
+              overflow-visible
+            "
+          >
+            {/* 1. Logo 胶囊 */}
             <LiquidCapsuleItem
               href="./"
               className="
-                h-14
+                pointer-events-auto
+                h-12
+                shrink-0
+                rounded-full
                 px-4
                 sm:px-5
-                rounded-full
                 flex
                 items-center
                 gap-3
@@ -473,17 +491,18 @@ export function Navbar({
                 {siteName}
               </span>
             </LiquidCapsuleItem>
-          </div>
 
-          {/* 中间：搜索框胶囊 */}
-          <div className="pointer-events-auto shrink-0">
+            {/* 2. 搜索框胶囊 */}
             <LiquidCapsuleItem
               className="
-                h-14
-                w-36
-                sm:w-52
+                pointer-events-auto
+                h-12
+                flex-1
+                min-w-0
+                max-w-[220px]
+                sm:max-w-xs
                 rounded-full
-                px-3.5
+                px-3
                 flex
                 items-center
                 gap-2
@@ -552,12 +571,19 @@ export function Navbar({
             </LiquidCapsuleItem>
           </div>
 
-          {/* 右侧：Sort 独立悬浮球 */}
-          <div className="pointer-events-auto shrink-0">
+          {/* 3. 右侧：独立排序悬浮球 */}
+          <div
+            className="
+              pointer-events-auto
+              shrink-0
+              w-12
+              h-12
+            "
+          >
             <LiquidCapsuleItem
               className="
-                w-14
-                h-14
+                w-12
+                h-12
                 p-0
                 rounded-full
                 flex
@@ -581,16 +607,13 @@ export function Navbar({
       <div
         aria-hidden="true"
         className="
-          h-[76px]
+          h-[68px]
           w-full
           shrink-0
         "
       />
 
-      {/* ===================================================
-       * BOTTOM DOCK
-       * =================================================== */}
-
+      {/* 底部悬浮 Dock 栏 */}
       {!hidden && (
         <div
           className="
@@ -614,9 +637,24 @@ export function Navbar({
             WebkitTransform: 'translate3d(0, 0, 0)',
           }}
         >
-          <div className="flex items-center justify-center gap-4 shrink-0">
-            {/* THEME */}
-            <div className="pointer-events-auto w-14 h-14 shrink-0">
+          <div
+            className="
+              flex
+              items-center
+              justify-center
+              gap-4
+              shrink-0
+            "
+          >
+            {/* 主题切换 */}
+            <div
+              className="
+                pointer-events-auto
+                w-14
+                h-14
+                shrink-0
+              "
+            >
               <LiquidCapsuleItem
                 className="
                   w-14
@@ -634,8 +672,14 @@ export function Navbar({
               </LiquidCapsuleItem>
             </div>
 
-            {/* VIEW TOGGLE */}
-            <div className="pointer-events-auto h-14 shrink-0">
+            {/* 视图切换 */}
+            <div
+              className="
+                pointer-events-auto
+                h-14
+                shrink-0
+              "
+            >
               <LiquidCapsuleItem
                 className="
                   h-14
