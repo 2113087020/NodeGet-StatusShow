@@ -18,7 +18,7 @@ interface Props {
   hidden?: boolean
 }
 
-// 核心：基于 WebGL 参数生成 1:1 物理精确胶囊透镜法线贴图
+// 核心：基于 WebGL 参数生成 1:1 物理精确胶囊透镜法线贴图（修复上下滑入一致性）
 function generateCapsuleNormalMap(width: number, height: number, radius: number) {
   const offscreen = document.createElement('canvas')
   offscreen.width = width
@@ -33,13 +33,20 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const halfH = height / 2
   const bX = Math.max(halfW - radius, 0)
   const bY = Math.max(halfH - radius, 0)
-  const bevelWidth = radius * 0.85
+
+  // 核心修复：上下滑入阈值对齐。
+  // 顶部滑入（py < 0）保持大倒角范围，产生大面积即时折射。
+  const bevelWidthTop = radius * 0.85; 
+  // 底部滑入（py > 0，即从卡片滑入）缩减计算倒角范围（约 12 逻辑像素），
+  // 迫使胶囊边缘必须更接近底部边缘才显示，杜绝显示过晚。
+  const bevelWidthBottom = radius * 0.22;
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const px = x - halfW
       const py = y - halfH
 
+      // SDF 胶囊圆角矩形距离
       const qx = Math.abs(px) - bX
       const qy = Math.abs(py) - bY
       const maxQx = Math.max(qx, 0)
@@ -53,12 +60,21 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 
       if (d <= 0) {
         const distToEdge = -d
-        const factor = Math.min(Math.max(1.0 - distToEdge / bevelWidth, 0.0), 1.0)
-        const curve = Math.pow(factor, 1.8)
 
-        // 1. 中间微凹陷
-        const concaveX = (px / halfW) * 0.25 * (1.0 - factor * 0.8)
-        const concaveY = (py / halfH) * 0.25 * (1.0 - factor * 0.8)
+        // 核心修复：根据 Y 轴相对位置，动态应用不同的吸附厚度。
+        let currentBevel = bevelWidthTop;
+        if (py > 0) { // 下半部胶囊边缘（采样的下方卡片）
+          currentBevel = bevelWidthBottom;
+        }
+
+        const factor = Math.min(Math.max(1.0 - (distToEdge / currentBevel), 0.0), 1.0);
+        
+        // 使用更柔和的拉伸曲线，降低阶跃瞬闪感
+        const curve = Math.pow(factor, 1.4); 
+
+        // 1. 中间微凹
+        const concaveX = (px / halfW) * 0.22 * (1.0 - factor * 0.8)
+        const concaveY = (py / halfH) * 0.22 * (1.0 - factor * 0.8)
 
         // 2. 平滑倒角法线
         let nx = 0, ny = 0
@@ -71,7 +87,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // 3. 倒角边缘强力吸扯
+        // 3. 倒角边缘向外吸扯
         const pullX = -nx * (0.80 * curve)
         const pullY = -ny * (0.80 * curve)
 
@@ -138,12 +154,12 @@ function LiquidCapsuleItem({
 
   const commonProps = {
     ref: containerRef,
-    // 调薄边框与底色：消除粗白圈
-    className: `relative border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.1] ${className}`,
+    // 发丝级晶体微光：降低 border 与底色不透明度
+    className: `relative border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.1] transition-shadow duration-300 ${className}`,
     style: {
       backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
       WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
-      // 发丝级微弱内反光与通透投影
+      // 削薄内高光与投影，让高透无粗框感
       boxShadow: `
         inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
         inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
@@ -160,7 +176,8 @@ function LiquidCapsuleItem({
         <defs>
           <filter id={filterId} x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse">
             {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
-            <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={36} xChannelSelector="R" yChannelSelector="G" />
+            {/* 修复：将 scale 从 36 降低至 24，让边缘大面积折射过渡丝滑 */}
+            <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={24} xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
       </svg>
