@@ -18,7 +18,7 @@ interface Props {
   hidden?: boolean
 }
 
-// 核心：保留全局平滑微凹 + 正弦闭环边缘折射 + 修复下边缘裁切
+// 核心：严格物理 1:1 中心重合、零坐标漂移的法线生成器
 function generateCapsuleNormalMap(width: number, height: number, radius: number) {
   const offscreen = document.createElement('canvas')
   offscreen.width = width
@@ -33,14 +33,17 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const halfH = height / 2
   const bX = Math.max(halfW - radius, 0)
   const bY = Math.max(halfH - radius, 0)
-  const bevelWidth = radius * 0.70
+  
+  // 倒角吸附环带
+  const bevelWidth = radius * 0.75
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const px = x - halfW
-      const py = y - halfH
+      // 严格以 Canvas 几何中心为原点 (px: -halfW ~ +halfW, py: -halfH ~ +halfH)
+      const px = x - halfW + 0.5
+      const py = y - halfH + 0.5
 
-      // 1. SDF 胶囊圆角矩形距离
+      // 1. SDF 圆角矩形距离
       const qx = Math.abs(px) - bX
       const qy = Math.abs(py) - bY
       const maxQx = Math.max(qx, 0)
@@ -54,47 +57,39 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 
       if (d <= 0.0) {
         const distToEdge = -d
+        const factor = Math.min(Math.max(distToEdge / bevelWidth, 0.0), 1.0)
+        const curve = Math.pow(1.0 - factor, 1.6)
 
-        // --- A. 全局平滑微凹透镜 (中心向四周平缓均匀扩张，中心零点严格对齐) ---
-        // 使用余弦衰减，使微凹从中心向边缘自然过渡
-        const normDist = Math.min(Math.sqrt((px / halfW) ** 2 + (py / halfH) ** 2), 1.0)
-        const concaveIntensity = Math.cos(normDist * (Math.PI * 0.5))
-        const concaveX = (px / halfW) * 0.20 * concaveIntensity
-        const concaveY = (py / halfH) * 0.20 * concaveIntensity
-
-        // --- B. 正弦闭环边缘透镜吸附 (上下左右严格几何对称) ---
-        let edgeX = 0
-        let edgeY = 0
-
-        if (distToEdge <= bevelWidth) {
-          const t = distToEdge / bevelWidth
-          // 正弦半波：外缘 0 -> 峰值 -> 内部 0
-          const wave = Math.sin(t * Math.PI)
-
-          let nx = 0
-          let ny = 0
-          const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
-          if (len > 0.0001) {
-            nx = (maxQx / len) * Math.sign(px)
-            ny = (maxQy / len) * Math.sign(py)
-          } else {
-            nx = Math.abs(px) > Math.abs(py) ? Math.sign(px) : 0
-            ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
-          }
-
-          // 边缘向外吸附
-          edgeX = -nx * wave * 0.75
-          edgeY = -ny * wave * 0.75
+        // A. 纯物理对称法线
+        let nx = 0
+        let ny = 0
+        const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
+        if (len > 0.0001) {
+          nx = (maxQx / len) * Math.sign(px)
+          ny = (maxQy / len) * Math.sign(py)
+        } else {
+          nx = Math.abs(px) > Math.abs(py) ? Math.sign(px) : 0
+          ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // --- C. 边缘极细平滑羽化 (防止超出位移产生硬边缘) ---
-        const edgeFade = Math.min(Math.max(distToEdge / 1.5, 0.0), 1.0)
+        // B. 全局微凹（基于对称归一化距离，中心绝对 0 偏移）
+        const normR = Math.min(Math.sqrt((px / halfW) ** 2 + (py / halfH) ** 2), 1.0)
+        const concaveIntensity = Math.sin(normR * Math.PI * 0.5)
+        const concaveX = (px / halfW) * 0.22 * (1.0 - concaveIntensity * 0.5)
+        const concaveY = (py / halfH) * 0.22 * (1.0 - concaveIntensity * 0.5)
 
-        offsetX = (concaveX + edgeX) * edgeFade
-        offsetY = (concaveY + edgeY) * edgeFade
+        // C. 边缘对称向外吸扯
+        const pullX = -nx * (0.80 * curve)
+        const pullY = -ny * (0.80 * curve)
+
+        // D. 边缘发丝羽化（防止溢出产生锯齿）
+        const edgeFade = Math.min(Math.max(distToEdge / 2.0, 0.0), 1.0)
+
+        offsetX = (concaveX + pullX) * edgeFade
+        offsetY = (concaveY + pullY) * edgeFade
       }
 
-      // 严格映射到 0~255 (128 为绝对 0 偏移)
+      // 严格对称量化 (128 为数学绝对中点)
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
       const gVal = Math.min(Math.max(Math.round(128 + offsetY * 127), 0), 255)
 
@@ -169,10 +164,10 @@ function LiquidCapsuleItem({
     <>
       <svg aria-hidden="true" className="fixed w-0 h-0 pointer-events-none opacity-0 -z-50">
         <defs>
-          {/* 关键修复：扩大 filter 区域范围 (y="-50%" height="200%")，彻底解决下边缘采样被裁切问题 */}
-          <filter id={filterId} x="-20%" y="-50%" width="140%" height="200%" filterUnits="objectBoundingBox">
+          {/* 彻底根治：严格 1:1 视口对齐，杜绝由于 filter 区域偏移导致的偏右偏上 */}
+          <filter id={filterId} x="0" y="0" width="100%" height="100%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse">
             {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
-            <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={26} xChannelSelector="R" yChannelSelector="G" />
+            <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={22} xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
       </svg>
