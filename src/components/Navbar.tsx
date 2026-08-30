@@ -138,14 +138,16 @@ function LiquidCapsuleItem({
 
   const commonProps = {
     ref: containerRef,
-    className: `relative border border-white/50 dark:border-white/15 bg-white/[0.05] dark:bg-black/[0.1] ${className}`,
+    // 调薄边框与底色：消除粗白圈
+    className: `relative border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.1] ${className}`,
     style: {
-      backdropFilter: mapUrl ? `url(#${filterId}) blur(1.5px)` : 'blur(8px)',
-      WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1.5px)` : 'blur(8px)',
+      backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+      WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+      // 发丝级微弱内反光与通透投影
       boxShadow: `
-        inset 0 1.5px 2px rgba(255, 255, 255, 0.75),
-        inset 0 -1px 2px rgba(0, 0, 0, 0.05),
-        0 10px 28px rgba(0, 0, 0, 0.08)
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
+        inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
+        0 8px 24px -4px rgba(0, 0, 0, 0.06)
       `,
       ...style,
     },
