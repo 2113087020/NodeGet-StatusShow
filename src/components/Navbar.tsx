@@ -18,7 +18,7 @@ interface Props {
   hidden?: boolean
 }
 
-// 核心：解决所有漂移、裁切与上下不对称的纯数学法线贴图生成器
+// 核心：精准还原 WebGL 强拉扯感与微凹，修复偏位与上下触发不对称
 function generateCapsuleNormalMap(width: number, height: number, radius: number) {
   const offscreen = document.createElement('canvas')
   offscreen.width = width
@@ -31,21 +31,18 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 
   const halfW = width / 2
   const halfH = height / 2
-  
-  // 严格胶囊几何体平直区间
   const bX = Math.max(halfW - radius, 0)
   const bY = Math.max(halfH - radius, 0)
   
-  // 锁定发丝透镜环宽度（固定为 8px~10px，杜绝上下力场重叠）
-  const ringWidth = Math.min(10, height * 0.22)
+  // 恢复大倒角吸附区（半径的 75%）
+  const bevelWidth = radius * 0.75
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      // 严格亚像素中心对齐 (0.5 像素栅格)
-      const px = (x + 0.5) - halfW
-      const py = (y + 0.5) - halfH
+      const px = x - halfW
+      const py = y - halfH
 
-      // 1. 精确 SDF 胶囊圆角矩形距离
+      // 1. 精准 SDF 圆角矩形
       const qx = Math.abs(px) - bX
       const qy = Math.abs(py) - bY
       const maxQx = Math.max(qx, 0)
@@ -57,15 +54,20 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
       let offsetX = 0
       let offsetY = 0
 
-      // 仅在胶囊内部处理
       if (d <= 0.0) {
         const distToEdge = -d
+        const factor = Math.min(Math.max(1.0 - (distToEdge / bevelWidth), 0.0), 1.0)
+        const curve = Math.pow(factor, 1.8) // 恢复 WebGL 的 1.8 次方强拉扯
 
-        // 2. 严格几何外法线 (Normal)
+        // 2. 全局微凹（恢复平滑微凹向外扩张）
+        const concaveX = (px / halfW) * 0.22 * (1.0 - factor * 0.8)
+        const concaveY = (py / halfH) * 0.22 * (1.0 - factor * 0.8)
+
+        // 3. 几何法线
         let nx = 0
         let ny = 0
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
-        if (len > 0.0001) {
+        if (len > 0.001) {
           nx = (maxQx / len) * Math.sign(px)
           ny = (maxQy / len) * Math.sign(py)
         } else {
@@ -73,33 +75,20 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // 3. 边缘发丝透镜折射：
-        // 关键改动：将折射力向量改为向内聚光（Converging），上下边缘向内吸入，防止超出边界被 Clip
-        if (distToEdge <= ringWidth) {
-          const t = distToEdge / ringWidth
-          // 采用平滑钟形脉冲曲线 (0 -> 1 -> 0)
-          const pulse = Math.sin(t * Math.PI)
-          
-          offsetX = nx * pulse * 0.75
-          offsetY = ny * pulse * 0.75
-        }
+        // 4. 恢复向外强力吸附（-nx, -ny）
+        // 关键对齐：下边缘（py > 0）在滚动时给一点柔和度补偿，消除“进得晚”的视觉延迟
+        const yPullScale = py > 0 ? 0.65 : 0.85
+        const pullX = -nx * (0.85 * curve)
+        const pullY = -ny * (yPullScale * curve)
 
-        // 4. 全局平缓微凹透镜 (仅提供极轻微的中心向外推力，不破坏上下平衡)
-        const rx = px / halfW
-        const ry = py / halfH
-        const rNorm = Math.min(Math.sqrt(rx * rx + ry * ry), 1.0)
-        const concaveWeight = (1.0 - rNorm) * 0.08
+        // 5. 边缘防溢出羽化
+        const edgeFade = Math.min(Math.max(distToEdge / 2.0, 0.0), 1.0)
 
-        offsetX += rx * concaveWeight
-        offsetY += ry * concaveWeight
-
-        // 5. 最外缘发丝羽化（确保贴合边缘时 100% 归零）
-        const edgeFade = Math.min(distToEdge / 1.5, 1.0)
-        offsetX *= edgeFade
-        offsetY *= edgeFade
+        offsetX = (concaveX + pullX) * edgeFade
+        offsetY = (concaveY + pullY) * edgeFade
       }
 
-      // 严格量化 (采用精确舍入，彻底消除 128/255 偏移 Bug)
+      // 严格映射
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
       const gVal = Math.min(Math.max(Math.round(128 + offsetY * 127), 0), 255)
 
@@ -133,7 +122,6 @@ function LiquidCapsuleItem({
   const rawId = useId()
   const filterId = 'liquid-lens-' + rawId.replace(/[^a-zA-Z0-9-_]/g, '')
   const [mapUrl, setMapUrl] = useState<string>('')
-  const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
 
   useEffect(() => {
     const el = containerRef.current
@@ -145,7 +133,6 @@ function LiquidCapsuleItem({
       const h = Math.round(rect.height)
       if (w === 0 || h === 0) return
 
-      setSize({ w, h })
       const radius = h / 2
       const url = generateCapsuleNormalMap(w, h, radius)
       setMapUrl(url)
@@ -160,8 +147,8 @@ function LiquidCapsuleItem({
     ref: containerRef,
     className: `relative border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.1] transition-shadow duration-300 ${className}`,
     style: {
-      backdropFilter: mapUrl ? `url(#${filterId}) blur(0.8px)` : 'blur(8px)',
-      WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(0.8px)` : 'blur(8px)',
+      backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+      WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
       boxShadow: `
         inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
         inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
@@ -174,37 +161,15 @@ function LiquidCapsuleItem({
 
   const content = (
     <>
-      {size.w > 0 && (
-        <svg
-          aria-hidden="true"
-          viewBox={`0 0 ${size.w} ${size.h}`}
-          className="fixed w-0 h-0 pointer-events-none opacity-0 -z-50"
-        >
-          <defs>
-            <filter id={filterId} x="0%" y="0%" width="100%" height="100%">
-              {mapUrl && (
-                <feImage
-                  href={mapUrl}
-                  x="0"
-                  y="0"
-                  width={size.w}
-                  height={size.h}
-                  preserveAspectRatio="none"
-                  result="lensMap"
-                />
-              )}
-              {/* scale 设为 20，兼顾透镜拉伸感与中心稳定性 */}
-              <feDisplacementMap
-                in="SourceGraphic"
-                in2="lensMap"
-                scale={20}
-                xChannelSelector="R"
-                yChannelSelector="G"
-              />
-            </filter>
-          </defs>
-        </svg>
-      )}
+      {/* 移除导致偏移的 viewBox，恢复纯净的 objectBoundingBox */}
+      <svg aria-hidden="true" className="fixed w-0 h-0 pointer-events-none opacity-0 -z-50">
+        <defs>
+          <filter id={filterId} x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+            {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
+            <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={26} xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
       {children}
     </>
   )
