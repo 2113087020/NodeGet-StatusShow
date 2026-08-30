@@ -18,8 +18,14 @@ interface Props {
   hidden?: boolean
 }
 
-// 核心：严格物理 1:1 中心重合、零坐标漂移的法线生成器
+// 核心：支持物理像素级偏移校准的法线贴图生成器
 function generateCapsuleNormalMap(width: number, height: number, radius: number) {
+  // ==========================================
+  // 偏移校准微调台 (若偏右则减小 BIAS_X，若偏上则增大 BIAS_Y)
+  // ==========================================
+  const BIAS_X = -0.06 // 抵消偏右，强制向左拉回
+  const BIAS_Y = +0.06 // 抵消偏上，强制向下拉回
+
   const offscreen = document.createElement('canvas')
   offscreen.width = width
   offscreen.height = height
@@ -33,13 +39,10 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const halfH = height / 2
   const bX = Math.max(halfW - radius, 0)
   const bY = Math.max(halfH - radius, 0)
-  
-  // 倒角吸附环带
-  const bevelWidth = radius * 0.75
+  const bevelWidth = radius * 0.70
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      // 严格以 Canvas 几何中心为原点 (px: -halfW ~ +halfW, py: -halfH ~ +halfH)
       const px = x - halfW + 0.5
       const py = y - halfH + 0.5
 
@@ -60,7 +63,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
         const factor = Math.min(Math.max(distToEdge / bevelWidth, 0.0), 1.0)
         const curve = Math.pow(1.0 - factor, 1.6)
 
-        // A. 纯物理对称法线
+        // 法线
         let nx = 0
         let ny = 0
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
@@ -72,24 +75,25 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // B. 全局微凹（基于对称归一化距离，中心绝对 0 偏移）
+        // 全局微凹
         const normR = Math.min(Math.sqrt((px / halfW) ** 2 + (py / halfH) ** 2), 1.0)
         const concaveIntensity = Math.sin(normR * Math.PI * 0.5)
-        const concaveX = (px / halfW) * 0.22 * (1.0 - concaveIntensity * 0.5)
-        const concaveY = (py / halfH) * 0.22 * (1.0 - concaveIntensity * 0.5)
+        const concaveX = (px / halfW) * 0.20 * (1.0 - concaveIntensity * 0.5)
+        const concaveY = (py / halfH) * 0.20 * (1.0 - concaveIntensity * 0.5)
 
-        // C. 边缘对称向外吸扯
+        // 边缘吸扯
         const pullX = -nx * (0.80 * curve)
         const pullY = -ny * (0.80 * curve)
 
-        // D. 边缘发丝羽化（防止溢出产生锯齿）
+        // 边缘羽化
         const edgeFade = Math.min(Math.max(distToEdge / 2.0, 0.0), 1.0)
 
-        offsetX = (concaveX + pullX) * edgeFade
-        offsetY = (concaveY + pullY) * edgeFade
+        // 叠加基准校准偏移
+        offsetX = (concaveX + pullX + BIAS_X) * edgeFade
+        offsetY = (concaveY + pullY + BIAS_Y) * edgeFade
       }
 
-      // 严格对称量化 (128 为数学绝对中点)
+      // 严格量化
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
       const gVal = Math.min(Math.max(Math.round(128 + offsetY * 127), 0), 255)
 
@@ -164,10 +168,9 @@ function LiquidCapsuleItem({
     <>
       <svg aria-hidden="true" className="fixed w-0 h-0 pointer-events-none opacity-0 -z-50">
         <defs>
-          {/* 彻底根治：严格 1:1 视口对齐，杜绝由于 filter 区域偏移导致的偏右偏上 */}
           <filter id={filterId} x="0" y="0" width="100%" height="100%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse">
             {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
-            <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={22} xChannelSelector="R" yChannelSelector="G" />
+            <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={24} xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
       </svg>
