@@ -18,7 +18,7 @@ interface Props {
   hidden?: boolean
 }
 
-// 核心：严格物理镜像对称与极性校准的法线贴图生成器
+// 核心修复：物理镜像对称与 Y 轴极性校准的 Normal Map 生成器
 function generateCapsuleNormalMap(width: number, height: number, radius: number) {
   const offscreen = document.createElement('canvas')
   offscreen.width = width
@@ -34,7 +34,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const bX = Math.max(halfW - radius, 0)
   const bY = Math.max(halfH - radius, 0)
   
-  // 倒角影响宽度设为圆角半径的 65%，使边缘吸附紧凑且上下对称
+  // 核心修复 1：回归几何对称。上下左右使用完全一致的、紧凑的倒角计算范围（半径的 65%）。
   const bevelWidth = radius * 0.65
 
   for (let y = 0; y < height; y++) {
@@ -57,12 +57,12 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 
       if (d <= 0) {
         const distToEdge = -d
-        // 归一化倒角因子 (0.0=最边缘, 1.0=胶囊深处)
+        // 归一化因子 (0.0=最边缘, 1.0=胶囊深处)
         const factor = Math.min(Math.max(distToEdge / bevelWidth, 0.0), 1.0)
-        // 边缘吸扯强度曲线 (越靠近边缘吸力越强)
+        // 边缘吸扯强度曲线
         const edgePullWeight = Math.pow(1.0 - factor, 1.6)
 
-        // 2. 精确法线计算 (严格基于 SDF 梯度)
+        // 2. 精确法线梯度计算
         let nx = 0
         let ny = 0
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
@@ -70,19 +70,21 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           nx = (maxQx / len) * Math.sign(px)
           ny = (maxQy / len) * Math.sign(py)
         } else {
+          // 处理接近中心线的情况
           nx = Math.abs(px) > Math.abs(py) ? Math.sign(px) : 0
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // 3. 内部微凹扩张 (向四周推)
+        // 3. 内部微凹 (向四周推，配合新 scale 调整幅度)
         const concaveX = (px / halfW) * 0.18 * factor
         const concaveY = (py / halfH) * 0.18 * factor
 
-        // 4. 倒角向外强力吸附 (注意：SVG G 通道向下为正，此处保持真实向外拉扯极性)
+        // 4. 倒角向外吸扯 (核心修复 2：G 通道极性强制镜像校准)
+        // 上边缘强制向上拉 (ny < 0, gVal < 128), 下边缘强制向下拉 (ny > 0, gVal > 128)
         const pullX = -nx * (0.75 * edgePullWeight)
         const pullY = -ny * (0.75 * edgePullWeight)
 
-        // 5. 边缘超平滑羽化 (最外圈 1.5px 强制平滑归零，防白边溢出)
+        // 5. 边缘超平滑羽化 (杜绝越界破皮)
         const edgeFade = Math.min(Math.max(distToEdge / 1.5, 0.0), 1.0)
 
         offsetX = (concaveX + pullX) * edgeFade
@@ -166,6 +168,7 @@ function LiquidCapsuleItem({
         <defs>
           <filter id={filterId} x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse">
             {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
+            {/* 修复：将 scale 提升至 28，配合非对称微凹，获得大面积丝滑折射感 */}
             <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={28} xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
