@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState, useId } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import {
   Area,
@@ -11,8 +11,6 @@ import {
   YAxis,
 } from 'recharts'
 import { Badge } from './ui/badge'
-import { Button } from './ui/button'
-import { Card } from './ui/card'
 import { Flag } from './Flag'
 import { StatusDot } from './StatusDot'
 import { bytes, pct, relativeAge, uptime } from '../utils/format'
@@ -28,13 +26,232 @@ import { useNodeLatency } from '../hooks/useNodeLatency'
 import type { BackendPool } from '../api/pool'
 import type { HistorySample, LatencyType, Node, NodeMeta, TaskQueryResult } from '../types'
 
+/* =========================================================
+ * Liquid Glass Normal Map 生成器
+ * ========================================================= */
+const normalMapCache = new Map<string, string>()
+
+function generateCapsuleNormalMap(width: number, height: number, radius: number) {
+  if (typeof document === 'undefined') return ''
+
+  const maxTextureSize = 256
+  const ratio = Math.min(1, maxTextureSize / Math.max(width, height))
+  const canvasWidth = Math.max(32, Math.round(width * ratio))
+  const canvasHeight = Math.max(32, Math.round(height * ratio))
+  const canvasRadius = Math.min(radius * ratio, canvasWidth / 2, canvasHeight / 2)
+
+  const cacheKey = `${canvasWidth}:${canvasHeight}:${Math.round(canvasRadius)}`
+  const cached = normalMapCache.get(cacheKey)
+  if (cached) return cached
+
+  const canvas = document.createElement('canvas')
+  canvas.width = canvasWidth
+  canvas.height = canvasHeight
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return ''
+
+  const imageData = ctx.createImageData(canvasWidth, canvasHeight)
+  const data = imageData.data
+
+  const halfW = canvasWidth / 2
+  const halfH = canvasHeight / 2
+  const bX = Math.max(halfW - canvasRadius, 0)
+  const bY = Math.max(halfH - canvasRadius, 0)
+  const bevelWidth = canvasRadius * 0.75
+
+  for (let y = 0; y < canvasHeight; y++) {
+    for (let x = 0; x < canvasWidth; x++) {
+      const px = x - halfW
+      const py = y - halfH
+
+      const qx = Math.abs(px) - bX
+      const qy = Math.abs(py) - bY
+      const maxQx = Math.max(qx, 0)
+      const maxQy = Math.max(qy, 0)
+      const outsideDist = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
+      const insideDist = Math.min(Math.max(qx, qy), 0)
+      const d = outsideDist + insideDist - canvasRadius
+
+      let offsetX = 0
+      let offsetY = 0
+
+      if (d <= 0) {
+        const distToEdge = -d
+        const factor = Math.min(Math.max(1 - distToEdge / Math.max(bevelWidth, 0.001), 0), 1)
+        const curve = Math.pow(factor, 1.8)
+
+        const concaveX = (px / halfW) * 0.22 * (1 - factor * 0.8)
+        const concaveY = (py / halfH) * 0.22 * (1 - factor * 0.8)
+
+        const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
+        let nx = 0
+        let ny = 0
+
+        if (len > 0.001) {
+          nx = (maxQx / len) * Math.sign(px)
+          ny = (maxQy / len) * Math.sign(py)
+        } else {
+          nx = Math.abs(px) > Math.abs(py) ? Math.sign(px) : 0
+          ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
+        }
+
+        const yPullScale = py > 0 ? 0.65 : 0.85
+        const pullX = -nx * (0.85 * curve)
+        const pullY = -ny * (yPullScale * curve)
+        const edgeFade = Math.min(Math.max(distToEdge / 2, 0), 1)
+
+        offsetX = (concaveX + pullX) * edgeFade
+        offsetY = (concaveY + pullY) * edgeFade
+      }
+
+      const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
+      const gVal = Math.min(Math.max(Math.round(128 + offsetY * 127), 0), 255)
+
+      const index = (y * canvasWidth + x) * 4
+      data[index] = rVal
+      data[index + 1] = gVal
+      data[index + 2] = 128
+      data[index + 3] = 255
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0)
+  const url = canvas.toDataURL('image/png')
+  normalMapCache.set(cacheKey, url)
+  return url
+}
+
+/* =========================================================
+ * 液态透镜容器基础组件
+ * ========================================================= */
+function LiquidLensItem({
+  children,
+  className = '',
+  style = {},
+  onClick,
+  radiusType = 'capsule',
+  customRadius,
+}: {
+  children: React.ReactNode
+  className?: string
+  style?: React.CSSProperties
+  onClick?: () => void
+  radiusType?: 'capsule' | 'card'
+  customRadius?: number
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const rawId = useId()
+  const filterId = `liquid-lens-${rawId.replace(/[^a-zA-Z0-9-_]/g, '')}`
+  const [mapUrl, setMapUrl] = useState('')
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+
+    let frameId = 0
+    let lastWidth = 0
+    let lastHeight = 0
+
+    const updateMap = () => {
+      cancelAnimationFrame(frameId)
+      frameId = requestAnimationFrame(() => {
+        const rect = element.getBoundingClientRect()
+        const width = Math.round(rect.width)
+        const height = Math.round(rect.height)
+
+        if (width <= 0 || height <= 0) return
+        if (width === lastWidth && height === lastHeight) return
+
+        lastWidth = width
+        lastHeight = height
+
+        const radius = customRadius ?? (radiusType === 'card' ? 24 : Math.min(width, height) / 2)
+        const url = generateCapsuleNormalMap(width, height, radius)
+        setMapUrl(url)
+      })
+    }
+
+    updateMap()
+    const resizeObserver = new ResizeObserver(updateMap)
+    resizeObserver.observe(element)
+
+    return () => {
+      cancelAnimationFrame(frameId)
+      resizeObserver.disconnect()
+    }
+  }, [radiusType, customRadius])
+
+  const filterElement = (
+    <svg
+      aria-hidden="true"
+      width="0"
+      height="0"
+      className="fixed pointer-events-none"
+      style={{
+        position: 'fixed',
+        width: 0,
+        height: 0,
+        overflow: 'hidden',
+        opacity: 0,
+      }}
+    >
+      <defs>
+        <filter
+          id={filterId}
+          x="0%"
+          y="0%"
+          width="100%"
+          height="100%"
+          filterUnits="objectBoundingBox"
+          colorInterpolationFilters="sRGB"
+        >
+          {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
+          {mapUrl && (
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="lensMap"
+              scale={26}
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          )}
+        </filter>
+      </defs>
+    </svg>
+  )
+
+  return (
+    <div
+      ref={containerRef}
+      onClick={onClick}
+      className={`relative border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] transition-shadow duration-300 ${className}`}
+      style={{
+        backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+        WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+        boxShadow: `
+          inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
+          inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
+          0 8px 24px -4px rgba(0, 0, 0, 0.06)
+        `,
+        isolation: 'isolate',
+        transform: 'translate3d(0, 0, 0)',
+        WebkitTransform: 'translate3d(0, 0, 0)',
+        ...style,
+      }}
+    >
+      {filterElement}
+      <div className="relative z-10 w-full h-full flex items-center">{children}</div>
+    </div>
+  )
+}
+
 const TOOLTIP_STYLE = {
   background: 'rgba(255, 255, 255, 0.85)',
   border: '1px solid rgba(255, 255, 255, 0.9)',
   borderRadius: 8,
   fontSize: 11,
   boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-  color: '#1e293b'
+  color: '#1e293b',
 }
 
 const DARK_TOOLTIP_STYLE = {
@@ -43,7 +260,7 @@ const DARK_TOOLTIP_STYLE = {
   borderRadius: 8,
   fontSize: 11,
   boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-  color: '#f8fafc'
+  color: '#f8fafc',
 }
 
 interface Props {
@@ -118,57 +335,64 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
   return (
     <div className="fixed inset-0 z-50 h-full w-full overflow-hidden flex flex-col bg-soft select-none animate-in fade-in duration-150">
       {/* 顶部悬浮导航 */}
-      <div className="fixed top-0 inset-x-0 z-30 w-full px-5 sm:px-7 pt-3.5 pb-2 pointer-events-none">
+      <header
+        className="fixed top-0 inset-x-0 z-30 w-full px-5 sm:px-7 pt-3.5 pb-2 pointer-events-none"
+        style={{
+          transform: 'translate3d(0, 0, 0)',
+          WebkitTransform: 'translate3d(0, 0, 0)',
+        }}
+      >
         <div className="max-w-7xl mx-auto flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={onClose} 
-            aria-label="返回" 
-            className="pointer-events-auto w-12 h-12 rounded-full shrink-0 liquid-lens active:scale-95 transition-all duration-200"
+          <LiquidLensItem
+            onClick={onClose}
+            className="pointer-events-auto w-12 h-12 rounded-full shrink-0 flex items-center justify-center active:scale-95 transition-all duration-200 cursor-pointer"
           >
-            <ArrowLeft className="h-5 w-5 text-slate-800 dark:text-slate-100" />
-          </Button>
-
-          <div className="pointer-events-auto flex-1 min-w-0 h-12 px-4 sm:px-5 rounded-full flex items-center gap-2.5 sm:gap-3.5 liquid-lens">
-            <StatusDot online={node.online} />
-            {logo && (
-              <img src={logo} alt="" className="w-5 h-5 shrink-0 object-contain drop-shadow-sm" loading="lazy" />
-            )}
-            <span className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate min-w-0 tracking-tight">
-              {displayName(node)}
-            </span>
-            <Flag code={node.meta?.region} className="shrink-0" />
-            <span className="hidden md:inline truncate text-xs font-mono text-slate-500 dark:text-slate-400">
-              {node.uuid}
-            </span>
-            <div className="ml-auto flex items-center gap-1.5 shrink-0 overflow-hidden">
-              {node.meta?.region && <GlassBadge>{node.meta.region}</GlassBadge>}
-              {showSource && (
-                <GlassBadge className="hidden sm:inline-flex">
-                  {node.source}
-                </GlassBadge>
-              )}
-              {virt && <GlassBadge>{virt}</GlassBadge>}
-              {tags.map(t => (
-                <Badge 
-                  key={t} 
-                  variant="outline"
-                  className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/40 dark:bg-white/10 border-white/70 dark:border-white/20 shrink-0"
-                >
-                  {t}
-                </Badge>
-              ))}
+            <div className="flex items-center justify-center w-full h-full">
+              <ArrowLeft className="h-5 w-5 text-slate-800 dark:text-slate-100" />
             </div>
-          </div>
+          </LiquidLensItem>
+
+          <LiquidLensItem className="pointer-events-auto flex-1 min-w-0 h-12 px-4 sm:px-5 rounded-full overflow-hidden">
+            <div className="flex items-center gap-2.5 sm:gap-3.5 w-full">
+              <StatusDot online={node.online} />
+              {logo && (
+                <img
+                  src={logo}
+                  alt=""
+                  className="w-5 h-5 shrink-0 object-contain drop-shadow-sm"
+                  loading="lazy"
+                />
+              )}
+              <span className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate min-w-0 tracking-tight">
+                {displayName(node)}
+              </span>
+              <Flag code={node.meta?.region} className="shrink-0" />
+              <span className="hidden md:inline truncate text-xs font-mono text-slate-500 dark:text-slate-400">
+                {node.uuid}
+              </span>
+              <div className="ml-auto flex items-center gap-1.5 shrink-0 overflow-hidden">
+                {node.meta?.region && <GlassBadge>{node.meta.region}</GlassBadge>}
+                {showSource && (
+                  <GlassBadge className="hidden sm:inline-flex">{node.source}</GlassBadge>
+                )}
+                {virt && <GlassBadge>{virt}</GlassBadge>}
+                {tags.map(t => (
+                  <Badge
+                    key={t}
+                    variant="outline"
+                    className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/40 dark:bg-white/10 border-white/70 dark:border-white/20 shrink-0"
+                  >
+                    {t}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </LiquidLensItem>
         </div>
-      </div>
+      </header>
 
       {/* 独立滚动内容区域 */}
-      <div 
-        ref={scrollRef}
-        className="flex-1 w-full overflow-y-auto overscroll-contain"
-      >
+      <div ref={scrollRef} className="flex-1 w-full overflow-y-auto overscroll-contain">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-24 space-y-6">
           <Section title="资源状态">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-6 gap-x-4 py-2">
@@ -313,24 +537,28 @@ function Section({
   children: ReactNode
 }) {
   return (
-    <Card className="p-6 rounded-3xl liquid-lens">
-      <div className="flex items-center justify-between gap-2 mb-5">
-        <div className="text-xs uppercase tracking-wider font-semibold text-slate-700 dark:text-slate-300">
-          {title}
+    <LiquidLensItem radiusType="card" className="p-6 rounded-3xl">
+      <div className="w-full">
+        <div className="flex items-center justify-between gap-2 mb-5">
+          <div className="text-xs uppercase tracking-wider font-semibold text-slate-700 dark:text-slate-300">
+            {title}
+          </div>
+          {action}
         </div>
-        {action}
+        {children}
       </div>
-      {children}
-    </Card>
+    </LiquidLensItem>
   )
 }
 
 function KV({ k, v }: { k: string; v: ReactNode }) {
   if (v == null || v === '') return null
   return (
-    <div className="flex justify-between items-center gap-3 text-sm py-1.5 px-2.5 rounded-xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+    <div className="flex justify-between items-center gap-3 text-sm py-1.5 px-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
       <span className="text-slate-600 dark:text-slate-400 font-medium">{k}</span>
-      <span className="font-mono text-right text-slate-900 dark:text-slate-100 font-semibold truncate">{v}</span>
+      <span className="font-mono text-right text-slate-900 dark:text-slate-100 font-semibold truncate">
+        {v}
+      </span>
     </div>
   )
 }
@@ -346,14 +574,20 @@ function Ring({ label, value, sub }: { label: string; value?: number; sub?: stri
       <div className="relative w-24 h-24 sm:w-28 sm:h-28">
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
           <circle
-            cx="50" cy="50" r={r}
-            fill="none" strokeWidth={8}
+            cx="50"
+            cy="50"
+            r={r}
+            fill="none"
+            strokeWidth={8}
             className="stroke-black/5 dark:stroke-white/10"
           />
           {hasValue && (
             <circle
-              cx="50" cy="50" r={r}
-              fill="none" strokeWidth={8}
+              cx="50"
+              cy="50"
+              r={r}
+              fill="none"
+              strokeWidth={8}
               className={strokeColor(value)}
               strokeDasharray={c}
               strokeDashoffset={c - (c * v) / 100}
@@ -368,7 +602,10 @@ function Ring({ label, value, sub }: { label: string; value?: number; sub?: stri
       </div>
       <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">{label}</div>
       {sub && (
-        <div className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate max-w-full" title={sub}>
+        <div
+          className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate max-w-full"
+          title={sub}
+        >
           {sub}
         </div>
       )}
@@ -392,10 +629,12 @@ function Spark({ data, dataKey, label, stroke, domain, format, isDark }: SparkPr
   const tooltipStyle = isDark ? DARK_TOOLTIP_STYLE : TOOLTIP_STYLE
 
   return (
-    <div className="rounded-2xl p-4 transition-all bg-white/40 dark:bg-white/5 border border-white/80 dark:border-white/10 shadow-inner">
+    <div className="rounded-2xl p-4 transition-all bg-black/[0.02] dark:bg-white/[0.03] border border-white/20 dark:border-white/10 shadow-inner">
       <div className="flex justify-between items-baseline mb-2">
         <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{label}</span>
-        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">{format(last)}</span>
+        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+          {format(last)}
+        </span>
       </div>
       <div className="h-20">
         <ResponsiveContainer width="100%" height="100%">
@@ -467,17 +706,17 @@ function LatencyBlock({
     })
 
   const rangeSelector = (
-    <div className="inline-flex items-center rounded-full p-0.5 liquid-lens border border-white/60 dark:border-white/10 divide-x divide-black/5 dark:divide-white/10 select-none">
+    <div className="inline-flex items-center rounded-full p-0.5 bg-black/[0.04] dark:bg-white/[0.06] border border-white/20 dark:border-white/10 divide-x divide-black/5 dark:divide-white/10 select-none">
       {TIME_RANGES.map(r => (
         <button
           key={r.hours}
           type="button"
           onClick={() => onHoursChange(r.hours)}
           className={cn(
-            'px-2 py-0.5 text-[10px] font-medium rounded-full transition-all duration-200 whitespace-nowrap active:scale-95',
+            'px-2 py-0.5 text-[10px] rounded-full transition-all duration-200 whitespace-nowrap active:scale-95',
             hours === r.hours
-              ? 'bg-blue-500 text-white shadow-sm font-semibold'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5'
+              ? 'bg-black/10 dark:bg-white/15 text-slate-900 dark:text-slate-100 font-semibold shadow-inner'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5',
           )}
         >
           {r.label}
@@ -488,7 +727,7 @@ function LatencyBlock({
 
   return (
     <Section title={title} action={rangeSelector}>
-      <div className="relative h-60 bg-white/35 dark:bg-slate-950/30 rounded-2xl border border-white/80 dark:border-white/10 p-2 mb-4">
+      <div className="relative h-60 bg-black/[0.02] dark:bg-slate-950/20 rounded-2xl border border-white/20 dark:border-white/10 p-2 mb-4">
         {empty && (
           <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400">
             {loading ? '正在从探针节点加载中…' : `暂无 ${type} 延迟数据`}
@@ -506,7 +745,11 @@ function LatencyBlock({
                 tickFormatter={t => {
                   const d = new Date(t)
                   if (hours <= 1) {
-                    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                    return d.toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })
                   }
                   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
                 }}
@@ -543,12 +786,15 @@ function LatencyBlock({
           </ResponsiveContainer>
         )}
         {!empty && loading && (
-          <div className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="数据同步中" />
+          <div
+            className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-blue-500 animate-pulse"
+            title="数据同步中"
+          />
         )}
       </div>
 
       {stats.length > 0 && (
-        <div className="mt-3 border-t border-white/70 dark:border-white/10 pt-3.5 space-y-1">
+        <div className="mt-3 border-t border-white/20 dark:border-white/10 pt-3.5 space-y-1">
           <div className="flex items-center px-2.5 pb-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
             <span className="flex-1">检测来源节点</span>
             <span className="w-20 text-right">平均延迟</span>
@@ -587,7 +833,7 @@ function LatencyStatsRow({
       onClick={onToggle}
       className={cn(
         'flex items-center px-2.5 py-1.5 rounded-xl text-xs cursor-pointer select-none transition-colors',
-        'hover:bg-white/50 dark:hover:bg-white/5',
+        'hover:bg-black/5 dark:hover:bg-white/5',
         hidden ? 'opacity-35' : 'opacity-100',
       )}
     >
@@ -607,7 +853,9 @@ function LatencyStatsRow({
       <span
         className={cn(
           'w-14 text-right tabular-nums font-mono',
-          lossRate >= 5 ? 'text-red-500 font-bold' : 'text-slate-600 dark:text-slate-400 font-medium',
+          lossRate >= 5
+            ? 'text-red-500 font-bold'
+            : 'text-slate-600 dark:text-slate-400 font-medium',
         )}
       >
         {lossRate.toFixed(1)}%
@@ -618,13 +866,13 @@ function LatencyStatsRow({
 
 function GlassBadge({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <Badge 
+    <Badge
       variant="outline"
       className={cn(
-        "text-[10px] px-2.5 py-0.5 rounded-full",
-        "bg-white/50 dark:bg-white/10 border-white/80 dark:border-white/20",
-        "text-slate-800 dark:text-slate-200 uppercase tracking-wide font-medium",
-        className
+        'text-[10px] px-2.5 py-0.5 rounded-full',
+        'bg-white/40 dark:bg-white/10 border-white/70 dark:border-white/20',
+        'text-slate-800 dark:text-slate-200 uppercase tracking-wide font-medium',
+        className,
       )}
     >
       {children}
@@ -668,7 +916,7 @@ function CostSection({ meta }: { meta: NodeMeta }) {
       <div className="space-y-2 pt-1">
         <KV k="续费金额" v={meta.price > 0 ? `${unit}${meta.price} / ${meta.priceCycle} 天` : null} />
         <KV k="到期时间" v={meta.expireTime || null} />
-        <KV k="剩余天数" v={<span className={cn(daysClass, "font-bold")}>{daysLabel}</span>} />
+        <KV k="剩余天数" v={<span className={cn(daysClass, 'font-bold')}>{daysLabel}</span>} />
         <KV k="剩余价值 (估)" v={meta.price > 0 ? `${unit}${value.toFixed(2)}` : null} />
 
         {meta.expireTime && days != null && (
