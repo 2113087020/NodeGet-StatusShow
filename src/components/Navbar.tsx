@@ -18,7 +18,7 @@ interface Props {
   hidden?: boolean
 }
 
-// 核心修复：物理镜像对称与 Y 轴极性校准的 Normal Map 生成器
+// 核心：修正 Y 轴折射极性，实现上下进入触发完全对称
 function generateCapsuleNormalMap(width: number, height: number, radius: number) {
   const offscreen = document.createElement('canvas')
   offscreen.width = width
@@ -34,12 +34,11 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const bX = Math.max(halfW - radius, 0)
   const bY = Math.max(halfH - radius, 0)
   
-  // 核心修复 1：回归几何对称。上下左右使用完全一致的、紧凑的倒角计算范围（半径的 65%）。
-  const bevelWidth = radius * 0.65
+  // 边缘倒角区域宽度（圆角半径的 60%）
+  const bevelWidth = radius * 0.60
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      // 绝对中心对称坐标 (-half 到 +half)
       const px = x - halfW
       const py = y - halfH
 
@@ -57,12 +56,10 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 
       if (d <= 0) {
         const distToEdge = -d
-        // 归一化因子 (0.0=最边缘, 1.0=胶囊深处)
         const factor = Math.min(Math.max(distToEdge / bevelWidth, 0.0), 1.0)
-        // 边缘吸扯强度曲线
-        const edgePullWeight = Math.pow(1.0 - factor, 1.6)
+        const edgePullWeight = Math.pow(1.0 - factor, 1.5)
 
-        // 2. 精确法线梯度计算
+        // 2. 几何法线
         let nx = 0
         let ny = 0
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
@@ -70,28 +67,27 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           nx = (maxQx / len) * Math.sign(px)
           ny = (maxQy / len) * Math.sign(py)
         } else {
-          // 处理接近中心线的情况
           nx = Math.abs(px) > Math.abs(py) ? Math.sign(px) : 0
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // 3. 内部微凹 (向四周推，配合新 scale 调整幅度)
-        const concaveX = (px / halfW) * 0.18 * factor
-        const concaveY = (py / halfH) * 0.18 * factor
+        // 3. 内部微凹
+        const concaveX = (px / halfW) * 0.15 * factor
+        const concaveY = (py / halfH) * 0.15 * factor
 
-        // 4. 倒角向外吸扯 (核心修复 2：G 通道极性强制镜像校准)
-        // 上边缘强制向上拉 (ny < 0, gVal < 128), 下边缘强制向下拉 (ny > 0, gVal > 128)
-        const pullX = -nx * (0.75 * edgePullWeight)
-        const pullY = -ny * (0.75 * edgePullWeight)
+        // 4. 关键修复：垂直极性反转 (将原本推开像素的 -ny 改为 +ny)
+        // 这样下边缘(py > 0)会向上吸纳下方进来的卡片，上边缘(py < 0)向下吸纳上方内容
+        const pullX = -nx * (0.85 * edgePullWeight)
+        const pullY = ny * (0.85 * edgePullWeight) // 修复核心：纠正垂直拉伸相位
 
-        // 5. 边缘超平滑羽化 (杜绝越界破皮)
+        // 5. 边缘超平滑羽化 (消除越界)
         const edgeFade = Math.min(Math.max(distToEdge / 1.5, 0.0), 1.0)
 
         offsetX = (concaveX + pullX) * edgeFade
         offsetY = (concaveY + pullY) * edgeFade
       }
 
-      // 严格映射至 0~255 (128 代表 0 位移)
+      // 映射到 0~255
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
       const gVal = Math.min(Math.max(Math.round(128 + offsetY * 127), 0), 255)
 
@@ -168,8 +164,7 @@ function LiquidCapsuleItem({
         <defs>
           <filter id={filterId} x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse">
             {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
-            {/* 修复：将 scale 提升至 28，配合非对称微凹，获得大面积丝滑折射感 */}
-            <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={28} xChannelSelector="R" yChannelSelector="G" />
+            <feDisplacementMap in="SourceGraphic" in2="lensMap" scale={26} xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </defs>
       </svg>
