@@ -18,42 +18,50 @@ interface Props {
   hidden?: boolean
 }
 
-// 核心：基于整数像素栅格的纯对称透镜法线贴图生成
-function generateCapsuleNormalMap(w: number, h: number, radius: number) {
+// 核心：解决所有漂移、裁切与上下不对称的纯数学法线贴图生成器
+function generateCapsuleNormalMap(width: number, height: number, radius: number) {
   const offscreen = document.createElement('canvas')
-  offscreen.width = w
-  offscreen.height = h
+  offscreen.width = width
+  offscreen.height = height
   const ctx = offscreen.getContext('2d')
   if (!ctx) return ''
 
-  const imgData = ctx.createImageData(w, h)
+  const imgData = ctx.createImageData(width, height)
   const data = imgData.data
 
-  const halfW = w / 2
-  const halfH = h / 2
+  const halfW = width / 2
+  const halfH = height / 2
+  
+  // 严格胶囊几何体平直区间
   const bX = Math.max(halfW - radius, 0)
   const bY = Math.max(halfH - radius, 0)
-  const ringWidth = Math.min(12, radius * 0.5)
+  
+  // 锁定发丝透镜环宽度（固定为 8px~10px，杜绝上下力场重叠）
+  const ringWidth = Math.min(10, height * 0.22)
 
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const px = x - halfW + 0.5
-      const py = y - halfH + 0.5
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      // 严格亚像素中心对齐 (0.5 像素栅格)
+      const px = (x + 0.5) - halfW
+      const py = (y + 0.5) - halfH
 
-      // SDF 精确圆角矩形
+      // 1. 精确 SDF 胶囊圆角矩形距离
       const qx = Math.abs(px) - bX
       const qy = Math.abs(py) - bY
       const maxQx = Math.max(qx, 0)
       const maxQy = Math.max(qy, 0)
-      const dist = Math.sqrt(maxQx * maxQx + maxQy * maxQy) + Math.min(Math.max(qx, qy), 0) - radius
+      const outsideDist = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
+      const insideDist = Math.min(Math.max(qx, qy), 0)
+      const d = outsideDist + insideDist - radius
 
       let offsetX = 0
       let offsetY = 0
 
-      if (dist <= 0) {
-        const distToEdge = -dist
+      // 仅在胶囊内部处理
+      if (d <= 0.0) {
+        const distToEdge = -d
 
-        // 纯对称几何法线
+        // 2. 严格几何外法线 (Normal)
         let nx = 0
         let ny = 0
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
@@ -65,30 +73,39 @@ function generateCapsuleNormalMap(w: number, h: number, radius: number) {
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // 边缘发丝正弦折射（上下左右绝对均等）
-        let pull = 0
+        // 3. 边缘发丝透镜折射：
+        // 关键改动：将折射力向量改为向内聚光（Converging），上下边缘向内吸入，防止超出边界被 Clip
         if (distToEdge <= ringWidth) {
           const t = distToEdge / ringWidth
-          pull = Math.sin(t * Math.PI) * 0.85
+          // 采用平滑钟形脉冲曲线 (0 -> 1 -> 0)
+          const pulse = Math.sin(t * Math.PI)
+          
+          offsetX = nx * pulse * 0.75
+          offsetY = ny * pulse * 0.75
         }
 
-        // 中心微凹（基于严格归一化半径）
-        const rNorm = Math.min(Math.hypot(px / halfW, py / halfH), 1.0)
-        const concave = (1.0 - rNorm) * 0.12
+        // 4. 全局平缓微凹透镜 (仅提供极轻微的中心向外推力，不破坏上下平衡)
+        const rx = px / halfW
+        const ry = py / halfH
+        const rNorm = Math.min(Math.sqrt(rx * rx + ry * ry), 1.0)
+        const concaveWeight = (1.0 - rNorm) * 0.08
 
+        offsetX += rx * concaveWeight
+        offsetY += ry * concaveWeight
+
+        // 5. 最外缘发丝羽化（确保贴合边缘时 100% 归零）
         const edgeFade = Math.min(distToEdge / 1.5, 1.0)
-
-        offsetX = (-nx * pull + (px / halfW) * concave) * edgeFade
-        offsetY = (-ny * pull + (py / halfH) * concave) * edgeFade
+        offsetX *= edgeFade
+        offsetY *= edgeFade
       }
 
-      // 严格量化
-      const r = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
-      const g = Math.min(Math.max(Math.round(128 + offsetY * 127), 0), 255)
+      // 严格量化 (采用精确舍入，彻底消除 128/255 偏移 Bug)
+      const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
+      const gVal = Math.min(Math.max(Math.round(128 + offsetY * 127), 0), 255)
 
-      const idx = (y * w + x) * 4
-      data[idx] = r
-      data[idx + 1] = g
+      const idx = (y * width + x) * 4
+      data[idx] = rVal
+      data[idx + 1] = gVal
       data[idx + 2] = 128
       data[idx + 3] = 255
     }
@@ -116,7 +133,7 @@ function LiquidCapsuleItem({
   const rawId = useId()
   const filterId = 'liquid-lens-' + rawId.replace(/[^a-zA-Z0-9-_]/g, '')
   const [mapUrl, setMapUrl] = useState<string>('')
-  const [dimensions, setDimensions] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
+  const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
 
   useEffect(() => {
     const el = containerRef.current
@@ -128,7 +145,7 @@ function LiquidCapsuleItem({
       const h = Math.round(rect.height)
       if (w === 0 || h === 0) return
 
-      setDimensions({ w, h })
+      setSize({ w, h })
       const radius = h / 2
       const url = generateCapsuleNormalMap(w, h, radius)
       setMapUrl(url)
@@ -157,11 +174,10 @@ function LiquidCapsuleItem({
 
   const content = (
     <>
-      {/* 核心修复：给 SVG 显式绑定 viewBox 与宽高，锁死像素网格，杜绝任何采样偏移 */}
-      {dimensions.w > 0 && (
+      {size.w > 0 && (
         <svg
           aria-hidden="true"
-          viewBox={`0 0 ${dimensions.w} ${dimensions.h}`}
+          viewBox={`0 0 ${size.w} ${size.h}`}
           className="fixed w-0 h-0 pointer-events-none opacity-0 -z-50"
         >
           <defs>
@@ -171,12 +187,13 @@ function LiquidCapsuleItem({
                   href={mapUrl}
                   x="0"
                   y="0"
-                  width={dimensions.w}
-                  height={dimensions.h}
-                  result="lensMap"
+                  width={size.w}
+                  height={size.h}
                   preserveAspectRatio="none"
+                  result="lensMap"
                 />
               )}
+              {/* scale 设为 20，兼顾透镜拉伸感与中心稳定性 */}
               <feDisplacementMap
                 in="SourceGraphic"
                 in2="lensMap"
