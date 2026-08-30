@@ -16,10 +16,10 @@ export function ViewToggle({ value, onChange }: { value: View; onChange: (v: Vie
       className="relative grid items-center p-1.5"
       style={{ gridTemplateColumns: `repeat(${ITEMS.length}, minmax(0, 1fr))` }}
     >
-      {/* 选中的内嵌椭圆滑块，留出贴合间距 */}
+      {/* 选中的暗色毛玻璃滑块 */}
       <div
         aria-hidden
-        className="absolute top-1.5 bottom-1.5 left-1.5 rounded-full bg-white/80 dark:bg-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-white/60 dark:border-white/10 transition-transform duration-300 ease-out pointer-events-none"
+        className="absolute top-1.5 bottom-1.5 left-1.5 rounded-full bg-black/10 dark:bg-white/15 shadow-inner transition-transform duration-300 ease-out pointer-events-none"
         style={{
           width: `calc((100% - 0.75rem) / ${ITEMS.length})`,
           transform: `translateX(${idx * 100}%)`,
@@ -54,8 +54,8 @@ function Btn({
       title={title}
       className={`relative z-10 inline-flex items-center justify-center gap-1.5 h-10 min-w-[50px] px-3.5 rounded-full transition-all duration-200 active:scale-95 ${
         active
-          ? 'text-blue-600 dark:text-blue-400 font-bold'
-          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+          ? 'text-slate-900 dark:text-slate-100 font-semibold'
+          : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
       }`}
     >
       {children}
