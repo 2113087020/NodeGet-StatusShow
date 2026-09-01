@@ -392,10 +392,10 @@ export function WorldMap({ nodes, onOpen }: Props) {
   return (
     <div
       ref={containerRef}
-      className="relative p-4 sm:p-6 rounded-3xl border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] shadow-sm select-none transition-shadow duration-300 overflow-hidden"
+      className="relative p-4 sm:p-6 rounded-3xl border border-white/20 dark:border-white/10 bg-slate-900/[0.02] dark:bg-black/[0.18] shadow-sm select-none transition-all duration-300 overflow-hidden"
       style={{
-        backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
-        WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+        backdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
+        WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
         boxShadow: `
           inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
           inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
@@ -429,10 +429,12 @@ export function WorldMap({ nodes, onOpen }: Props) {
             filterUnits="objectBoundingBox"
             colorInterpolationFilters="sRGB"
           >
+            {/* 注入高斯模糊，获得通透磨砂底感 */}
+            <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blurredBg" />
             {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
             {mapUrl && (
               <feDisplacementMap
-                in="SourceGraphic"
+                in="blurredBg"
                 in2="lensMap"
                 scale={32}
                 xChannelSelector="R"
@@ -446,10 +448,10 @@ export function WorldMap({ nodes, onOpen }: Props) {
       <div className="relative z-10 w-full flex flex-col gap-4">
         {/* 顶部标题栏 */}
         <div className="flex items-center justify-between px-1">
-          <div className="text-xs uppercase tracking-wider font-semibold text-slate-700 dark:text-slate-300">
+          <div className="text-xs uppercase tracking-wider font-semibold text-slate-800 dark:text-slate-200">
             全球节点地理分布
           </div>
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>{totalOnline} / {totalNodes} 节点在线</span>
           </div>
@@ -457,29 +459,29 @@ export function WorldMap({ nodes, onOpen }: Props) {
 
         {/* 地图视口 */}
         <div
-          className="relative w-full rounded-2xl border border-white/20 dark:border-white/10 bg-black/[0.02] dark:bg-slate-950/20 overflow-hidden"
+          className="relative w-full rounded-2xl border border-white/20 dark:border-white/10 bg-slate-900/[0.02] dark:bg-slate-950/20 overflow-hidden"
           style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}
         >
           <div ref={wrapRef} className="absolute inset-0" />
         </div>
 
         {/* 下方联动区域抽屉 */}
-        <div className="rounded-2xl p-3.5 sm:p-4 bg-black/[0.02] dark:bg-white/[0.03] border border-white/20 dark:border-white/10 space-y-3 shadow-inner">
-          <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/10">
+        <div className="rounded-2xl p-3.5 sm:p-4 bg-slate-900/[0.02] dark:bg-white/[0.03] border border-white/20 dark:border-white/10 space-y-3 shadow-inner">
+          <div className="flex items-center justify-between pb-2 border-b border-black/10 dark:border-white/10">
             <div className="flex items-center gap-2">
               {activeEntry.a2 === 'ALL' ? (
                 <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
               ) : (
                 <Flag code={activeEntry.a2} className="shrink-0 drop-shadow-sm" />
               )}
-              <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+              <span className="font-semibold text-sm text-slate-900 dark:text-slate-100">
                 {activeEntry.cname}
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
+              <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
                 ({activeEntry.online} 在线{activeEntry.offline > 0 ? ` · ${activeEntry.offline} 离线` : ''})
               </span>
             </div>
-            <div className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
+            <div className="text-xs font-mono font-semibold text-slate-900 dark:text-slate-100">
               {activeEntry.a2}
             </div>
           </div>
@@ -494,7 +496,7 @@ export function WorldMap({ nodes, onOpen }: Props) {
                 <div
                   key={n.uuid}
                   onClick={() => onOpen?.(n.uuid)}
-                  className="group flex items-center justify-between p-2.5 rounded-xl bg-white/40 dark:bg-white/5 hover:bg-black/5 dark:hover:bg-white/10 border border-white/40 dark:border-white/10 shadow-xs cursor-pointer transition-all duration-150 active:scale-[0.99]"
+                  className="group flex items-center justify-between p-2.5 rounded-xl bg-white/50 dark:bg-white/5 hover:bg-black/5 dark:hover:bg-white/10 border border-slate-300/60 dark:border-white/10 shadow-xs cursor-pointer transition-all duration-150 active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <StatusDot online={n.online} />
@@ -508,10 +510,10 @@ export function WorldMap({ nodes, onOpen }: Props) {
                       />
                     )}
                     <div className="min-w-0">
-                      <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
+                      <div className="font-semibold text-xs text-slate-900 dark:text-slate-100 truncate">
                         {displayName(n)}
                       </div>
-                      <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                      <div className="text-[10px] font-mono text-slate-600 dark:text-slate-400 mt-0.5 font-normal">
                         CPU {pct(u.cpu)} · 内存 {pct(u.mem)} · 磁盘 {pct(u.disk)}
                       </div>
                     </div>
@@ -519,14 +521,14 @@ export function WorldMap({ nodes, onOpen }: Props) {
 
                   <div className="flex items-center gap-2 shrink-0 font-mono text-[11px] text-right">
                     <div>
-                      <div className="font-semibold text-slate-700 dark:text-slate-300">
+                      <div className="font-medium text-slate-800 dark:text-slate-200">
                         ↑ {bytes(u.netOut || 0)}/s
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                      <div className="text-[10px] text-slate-600 dark:text-slate-400 font-normal">
                         ↓ {bytes(u.netIn || 0)}/s
                       </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="h-4 w-4 text-slate-500 group-hover:text-slate-800 dark:group-hover:text-slate-200 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               )
