@@ -118,7 +118,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 }
 
 /* =========================================================
- * 液态透镜卡片外壳
+ * 液态透镜卡片外壳（带无白雾通透模糊）
  * ========================================================= */
 function LiquidCardItem({
   children,
@@ -196,10 +196,12 @@ function LiquidCardItem({
           filterUnits="objectBoundingBox"
           colorInterpolationFilters="sRGB"
         >
+          {/* 内置高斯模糊底图，保证磨砂通透感（不产生白雾） */}
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blurredBg" />
           {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
           {mapUrl && (
             <feDisplacementMap
-              in="SourceGraphic"
+              in="blurredBg"
               in2="lensMap"
               scale={32}
               xChannelSelector="R"
@@ -214,10 +216,10 @@ function LiquidCardItem({
   return (
     <div
       ref={containerRef}
-      className={`relative border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] transition-shadow duration-300 overflow-hidden ${className}`}
+      className={`relative border border-white/20 dark:border-white/10 bg-slate-900/[0.02] dark:bg-black/[0.18] transition-all duration-300 overflow-hidden ${className}`}
       style={{
-        backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
-        WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+        backdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
+        WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
         boxShadow: `
           inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
           inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
@@ -272,21 +274,21 @@ export function OverviewCard({ nodes }: Props) {
 
   return (
     <LiquidCardItem className="px-4 py-3.5 sm:px-6 sm:py-4 rounded-3xl select-none">
-      <div className="grid grid-cols-3 divide-x divide-black/5 dark:divide-white/10">
+      <div className="grid grid-cols-3 divide-x divide-black/10 dark:divide-white/10">
         
         {/* 1. 节点状态 */}
         <div className="flex flex-col md:flex-row md:items-center justify-center gap-1 md:gap-3 px-1 sm:px-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 shrink-0">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 shrink-0">
             <Server className="w-3.5 h-3.5 text-blue-500 shrink-0" />
             <span>节点状态</span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center gap-0.5 md:gap-2 min-w-0">
             <div className="flex items-baseline gap-1 font-mono">
-              <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 tabular-nums">
+              <span className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                 {stats.online}
               </span>
-              <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+              <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-normal">
                 / {stats.total}
               </span>
             </div>
@@ -304,10 +306,10 @@ export function OverviewCard({ nodes }: Props) {
               <span
                 className={
                   stats.offline === 0
-                    ? 'text-emerald-600 dark:text-emerald-400'
+                    ? 'text-emerald-700 dark:text-emerald-400 font-medium'
                     : stats.online === 0
-                      ? 'text-red-500'
-                      : 'text-amber-600 dark:text-amber-400'
+                      ? 'text-red-600 dark:text-red-400 font-medium'
+                      : 'text-amber-700 dark:text-amber-400 font-medium'
                 }
               >
                 {stats.offline === 0
@@ -322,17 +324,17 @@ export function OverviewCard({ nodes }: Props) {
 
         {/* 2. 实时速率 */}
         <div className="flex flex-col md:flex-row md:items-center justify-center gap-1 md:gap-3 px-2 sm:px-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 shrink-0">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 shrink-0">
             <Activity className="w-3.5 h-3.5 text-purple-500 shrink-0" />
             <span>实时速率</span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center gap-0.5 md:gap-3 font-mono text-[11px] sm:text-xs min-w-0">
-            <div className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200 tabular-nums truncate">
+            <div className="flex items-center gap-1 font-medium text-slate-800 dark:text-slate-200 tabular-nums truncate">
               <ArrowUp className="w-3 h-3 text-amber-500 shrink-0" />
               <span>{bytes(stats.totalNetOut)}/s</span>
             </div>
-            <div className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200 tabular-nums truncate">
+            <div className="flex items-center gap-1 font-medium text-slate-800 dark:text-slate-200 tabular-nums truncate">
               <ArrowDown className="w-3 h-3 text-blue-500 shrink-0" />
               <span>{bytes(stats.totalNetIn)}/s</span>
             </div>
@@ -341,18 +343,18 @@ export function OverviewCard({ nodes }: Props) {
 
         {/* 3. 累计用量 */}
         <div className="flex flex-col md:flex-row md:items-center justify-center gap-1 md:gap-3 px-1 sm:px-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 shrink-0">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 shrink-0">
             <HardDrive className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
             <span>累计用量</span>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center gap-0.5 md:gap-3 font-mono text-[11px] sm:text-xs min-w-0">
-            <div className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200 tabular-nums truncate">
-              <span className="text-[10px] text-slate-600 dark:text-slate-300 font-sans">出</span>
+            <div className="flex items-center gap-1 font-medium text-slate-800 dark:text-slate-200 tabular-nums truncate">
+              <span className="text-[10px] text-slate-600 dark:text-slate-400 font-sans">出</span>
               <span>{bytes(stats.totalTrans)}</span>
             </div>
-            <div className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200 tabular-nums truncate">
-              <span className="text-[10px] text-slate-600 dark:text-slate-300 font-sans">入</span>
+            <div className="flex items-center gap-1 font-medium text-slate-800 dark:text-slate-200 tabular-nums truncate">
+              <span className="text-[10px] text-slate-600 dark:text-slate-400 font-sans">入</span>
               <span>{bytes(stats.totalRecv)}</span>
             </div>
           </div>
