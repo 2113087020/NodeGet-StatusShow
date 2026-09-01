@@ -72,13 +72,16 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
       if (d <= 0) {
         const distToEdge = -d
         const factor = Math.min(Math.max(1 - distToEdge / Math.max(bevelWidth, 0.001), 0), 1)
-        const curve = Math.pow(factor, 1.8)
 
-        // 2. 全局微凹
+        // 2. 玻璃倒角凸起曲线：钟形曲线（边缘和内部归零，中间红线处达到最大反射折射）
+        const bellCurve = Math.sin(factor * Math.PI)
+        const reflectionCurve = Math.pow(bellCurve, 1.2)
+
+        // 3. 全局微凹
         const concaveX = (px / halfW) * 0.22 * (1 - factor * 0.8)
         const concaveY = (py / halfH) * 0.22 * (1 - factor * 0.8)
 
-        // 3. 几何法线
+        // 4. 几何法线
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
         let nx = 0
         let ny = 0
@@ -91,14 +94,15 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // 4. 边缘全反射（反向向外强抓取取样，产生倒影/倒置效果）
-        const reflectionPull = 1.45 * curve
-        const pullX = nx * reflectionPull
-        const pullY = ny * reflectionPull
-        const edgeFade = Math.min(Math.max(distToEdge / 2, 0), 1)
+        // 5. 边缘盲区保护与倒影抓取（防止外侧边缘过早采样外部像素）
+        const pullX = nx * (1.35 * reflectionCurve)
+        const pullY = ny * (1.35 * reflectionCurve)
 
-        offsetX = (concaveX + pullX) * edgeFade
-        offsetY = (concaveY + pullY) * edgeFade
+        // 距离最外边缘 3px 区域进行平滑阻尼，避免将刚贴近边缘的内容漏进来
+        const deadZoneFade = Math.min(Math.max((distToEdge - 1.5) / 3, 0), 1)
+
+        offsetX = (concaveX + pullX) * deadZoneFade
+        offsetY = (concaveY + pullY) * deadZoneFade
       }
 
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
@@ -205,7 +209,7 @@ function LiquidCapsuleItem({
             <feDisplacementMap
               in="SourceGraphic"
               in2="lensMap"
-              scale={32}
+              scale={30}
               xChannelSelector="R"
               yChannelSelector="G"
             />
