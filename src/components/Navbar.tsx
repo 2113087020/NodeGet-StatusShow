@@ -19,7 +19,7 @@ interface Props {
 }
 
 /* =========================================================
- * Liquid Glass Normal Map 生成器（精确倒影反射 + 边缘盲区过滤）
+ * Liquid Glass Normal Map 生成器（带尺寸优化与缓存机制）
  * ========================================================= */
 const normalMapCache = new Map<string, string>()
 
@@ -50,16 +50,14 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const halfH = canvasHeight / 2
   const bX = Math.max(halfW - canvasRadius, 0)
   const bY = Math.max(halfH - canvasRadius, 0)
-
-  // 倒角厚度（红线所在位置约占倒角深度的 60% 处）
-  const bevelWidth = Math.max(canvasRadius * 0.75, 8)
+  const bevelWidth = canvasRadius * 0.75
 
   for (let y = 0; y < canvasHeight; y++) {
     for (let x = 0; x < canvasWidth; x++) {
       const px = x - halfW
       const py = y - halfH
 
-      // 1. SDF 距离场计算
+      // 1. SDF 计算
       const qx = Math.abs(px) - bX
       const qy = Math.abs(py) - bY
       const maxQx = Math.max(qx, 0)
@@ -72,10 +70,10 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
       let offsetY = 0
 
       if (d <= 0) {
-        const distToEdge = -d // 0 为外边缘，增大向内部延伸
-        const factor = Math.min(Math.max(distToEdge / bevelWidth, 0), 1) // 0(边缘) -> 1(倒角内部结束)
+        const distToEdge = -d
+        const factor = Math.min(Math.max(1 - distToEdge / Math.max(bevelWidth, 0.001), 0), 1)
 
-        // 几何法线方向向量
+        // 2. 几何法线
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
         let nx = 0
         let ny = 0
@@ -88,17 +86,22 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // 2. 红线倒影曲线：在红线位置(factor ≈ 0.5)达到最大倒影拉扯
-        // 边缘(factor=0)向中心大幅折射将内容埋没，文字到达红线才被反向拉出形成倒影
-        const reflectionIntensity = Math.sin(factor * Math.PI)
-        const invertedPull = (Math.pow(reflectionIntensity, 1.5) - (1.0 - factor) * 0.6) * 1.5
-
-        // 全局微凹
+        // 3. 全局微凹
         const concaveX = (px / halfW) * 0.22 * (1 - factor * 0.8)
         const concaveY = (py / halfH) * 0.22 * (1 - factor * 0.8)
 
-        offsetX = concaveX - nx * invertedPull
-        offsetY = concaveY - ny * invertedPull
+        // 4. 红线倒影曲线 + 边缘盲区过滤
+        // 在红线过渡区（factor ~ 0.5）形成倒影拉扯；在边缘（factor=0）向内折射吞掉未到达红线的内容
+        const curve = Math.pow(Math.sin((1 - factor) * Math.PI * 0.5), 1.8)
+        const reflectionPull = 1.45 * curve
+        const pullX = nx * reflectionPull
+        const pullY = ny * reflectionPull
+
+        // 边缘盲区遮蔽渐变：防止胶囊边缘刚触碰文字时提前漏出
+        const deadZoneFade = Math.min(Math.max((distToEdge - 1.2) / 3.2, 0), 1)
+
+        offsetX = (concaveX + pullX) * deadZoneFade
+        offsetY = (concaveY + pullY) * deadZoneFade
       }
 
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
