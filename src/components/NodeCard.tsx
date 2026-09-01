@@ -18,7 +18,6 @@ const normalMapCache = new Map<string, string>()
 function generateCapsuleNormalMap(width: number, height: number, radius: number) {
   if (typeof document === 'undefined') return ''
 
-  // 内部纹理限宽，优化移动端开销
   const maxTextureSize = 256
   const ratio = Math.min(1, maxTextureSize / Math.max(width, height))
   const canvasWidth = Math.max(32, Math.round(width * ratio))
@@ -43,7 +42,6 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const bX = Math.max(halfW - canvasRadius, 0)
   const bY = Math.max(halfH - canvasRadius, 0)
 
-  // 缩小倒角厚度，反射线向外扩，显著缩窄边缘反射盲区
   const bevelWidth = Math.max(canvasRadius * 0.38, 4)
 
   for (let y = 0; y < canvasHeight; y++) {
@@ -51,7 +49,6 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
       const px = x - halfW
       const py = y - halfH
 
-      // 1. SDF 计算
       const qx = Math.abs(px) - bX
       const qy = Math.abs(py) - bY
       const maxQx = Math.max(qx, 0)
@@ -66,7 +63,6 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
       if (d <= 0) {
         const distToEdge = -d
 
-        // 几何法线向量（由中心指向边缘）
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
         let nx = 0
         let ny = 0
@@ -80,20 +76,13 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
         }
 
         if (distToEdge < bevelWidth) {
-          // ==========================================
-          // 环形反射区：从外边缘到反射分界线
-          // ==========================================
           const factor = distToEdge / bevelWidth
           const reflectionCurve = Math.pow(1 - factor, 1.4)
           const reflectionStrength = 1.45 * reflectionCurve
 
-          // 向中心内部深度抓取像素，形成反射镜像
           offsetX = -nx * reflectionStrength
           offsetY = -ny * reflectionStrength
         } else {
-          // ==========================================
-          // 凹透镜核心区：反射线以内的中心区域
-          // ==========================================
           const concaveX = (px / halfW) * 0.22
           const concaveY = (py / halfH) * 0.22
 
@@ -120,7 +109,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 }
 
 /* =========================================================
- * 液态透镜卡片外壳（支持无白雾通透模糊）
+ * 液态透镜卡片外壳
  * ========================================================= */
 function LiquidCardItem({
   children,
@@ -157,7 +146,6 @@ function LiquidCardItem({
         lastWidth = width
         lastHeight = height
 
-        // 对应 rounded-3xl 的 24px 圆角
         const radius = 24
         const url = generateCapsuleNormalMap(width, height, radius)
         setMapUrl(url)
@@ -198,13 +186,8 @@ function LiquidCardItem({
           filterUnits="objectBoundingBox"
           colorInterpolationFilters="sRGB"
         >
-          {/* 1. 先对背景执行适度高斯模糊，产生磨砂质感（不产生白雾） */}
           <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blurredBg" />
-          
-          {/* 2. 载入法线图 */}
           {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
-          
-          {/* 3. 在模糊底图上施加液态物理折射 */}
           {mapUrl && (
             <feDisplacementMap
               in="blurredBg"
@@ -254,7 +237,6 @@ export function NodeCard({ node }: { node: Node }) {
   const virt = virtLabel(node)
   const cpu = cpuLabel(node)
 
-  // 从 node.meta 读取由流控扩展计算的周期流量
   const limitGb = node.meta?.trafficLimit
   const usedBytes = node.meta?.trafficUsed ?? 0
   const resetDay = node.meta?.trafficResetDay ?? 1
@@ -284,14 +266,14 @@ export function NodeCard({ node }: { node: Node }) {
           {logo && (
             <img src={logo} alt="" className="w-5 h-5 shrink-0 object-contain drop-shadow-sm" loading="lazy" />
           )}
-          <span className="font-bold text-slate-900 dark:text-slate-100 flex-1 min-w-0 truncate tracking-tight" title={displayName(node)}>
+          <span className="font-bold text-slate-950 dark:text-slate-50 flex-1 min-w-0 truncate tracking-tight text-base" title={displayName(node)}>
             {displayName(node)}
           </span>
           <Flag code={node.meta?.region} className="shrink-0" />
         </div>
 
         {(os || virt) && (
-          <div className="font-mono text-xs text-slate-500 dark:text-slate-400 truncate -mt-1">
+          <div className="font-mono text-xs text-slate-700 dark:text-slate-300 font-medium truncate -mt-1">
             {[os, virt].filter(Boolean).join(' · ')}
           </div>
         )}
@@ -316,14 +298,14 @@ export function NodeCard({ node }: { node: Node }) {
           />
         </div>
 
-        <div className="pt-3 border-t border-white/20 dark:border-white/10 font-mono text-xs text-slate-600 dark:text-slate-400 space-y-2">
+        <div className="pt-3 border-t border-black/10 dark:border-white/10 font-mono text-xs text-slate-800 dark:text-slate-200 font-semibold space-y-2">
           <div className="flex items-center gap-3">
             <Stat icon={ArrowDown}>{bytes(u.netIn || 0)}/s</Stat>
             <Stat icon={ArrowUp}>{bytes(u.netOut || 0)}/s</Stat>
           </div>
           <div className="flex items-center gap-3">
             <Stat icon={Clock}>{uptime(u.uptime)}</Stat>
-            <span className="ml-auto">{relativeAge(u.ts)}</span>
+            <span className="ml-auto text-slate-700 dark:text-slate-300 font-medium">{relativeAge(u.ts)}</span>
           </div>
         </div>
 
@@ -333,7 +315,7 @@ export function NodeCard({ node }: { node: Node }) {
               <Badge 
                 key={t} 
                 variant="outline" 
-                className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/40 dark:bg-white/10 border-white/70 dark:border-white/20 text-slate-700 dark:text-slate-300"
+                className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/60 dark:bg-white/15 border-slate-300/80 dark:border-white/20 text-slate-900 dark:text-slate-100 font-medium"
               >
                 {t}
               </Badge>
@@ -347,8 +329,8 @@ export function NodeCard({ node }: { node: Node }) {
 
 function Stat({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <Icon className="h-3.5 w-3.5 opacity-70" />
+    <span className="inline-flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+      <Icon className="h-3.5 w-3.5 text-slate-700 dark:text-slate-300 shrink-0" />
       {children}
     </span>
   )
@@ -369,20 +351,20 @@ function Metric({
 }) {
   return (
     <div className="min-w-0">
-      <div className="flex justify-between text-xs mb-1.5 font-medium">
-        <span className="text-slate-600 dark:text-slate-400">{label}</span>
-        <span className="font-mono text-slate-900 dark:text-slate-100 font-semibold">
+      <div className="flex justify-between text-xs mb-1.5 font-semibold">
+        <span className="text-slate-800 dark:text-slate-200">{label}</span>
+        <span className="font-mono text-slate-950 dark:text-slate-50 font-bold">
           {overrideValueText ?? pct(value)}
         </span>
       </div>
       <Progress 
         value={value ?? 0} 
         indicatorClassName={loadColor(value)} 
-        className="h-1.5 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden" 
+        className="h-1.5 bg-black/10 dark:bg-white/15 rounded-full overflow-hidden" 
       />
       {sub && (
         <div
-          className="font-mono text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 truncate"
+          className="font-mono text-[11px] text-slate-700 dark:text-slate-300 font-medium mt-1.5 truncate"
           title={subTitle}
         >
           {sub}
