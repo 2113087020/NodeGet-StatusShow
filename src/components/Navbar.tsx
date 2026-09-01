@@ -71,9 +71,8 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 
       if (d <= 0) {
         const distToEdge = -d
-        const factor = Math.min(Math.max(1 - distToEdge / Math.max(bevelWidth, 0.001), 0), 1)
 
-        // 2. 几何法线
+        // 几何法线向量（由中心指向边缘）
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
         let nx = 0
         let ny = 0
@@ -86,22 +85,31 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // 3. 全局微凹
-        const concaveX = (px / halfW) * 0.22 * (1 - factor * 0.8)
-        const concaveY = (py / halfH) * 0.22 * (1 - factor * 0.8)
+        if (distToEdge < bevelWidth) {
+          // ==========================================
+          // 环形反射区：从最外边缘到反射分界线之间
+          // ==========================================
+          // factor: 0(最外边缘) -> 1(反射线)
+          const factor = distToEdge / bevelWidth
+          
+          // 在外边缘处产生最大向内抓取深度，将胶囊内部底层画面向外圈边缘折射
+          // 越靠近反射线，折射量越平滑归零并与内凹区自然交接
+          const reflectionCurve = Math.pow(1 - factor, 1.4)
+          const reflectionStrength = 1.45 * reflectionCurve
 
-        // 4. 红线倒影曲线 + 边缘盲区过滤
-        // 在红线过渡区（factor ~ 0.5）形成倒影拉扯；在边缘（factor=0）向内折射吞掉未到达红线的内容
-        const curve = Math.pow(Math.sin((1 - factor) * Math.PI * 0.5), 1.8)
-        const reflectionPull = 1.45 * curve
-        const pullX = nx * reflectionPull
-        const pullY = ny * reflectionPull
+          // 负号表示向中心内部深度抓取像素，形成反射镜像，隐藏边缘外部原本的内容
+          offsetX = -nx * reflectionStrength
+          offsetY = -ny * reflectionStrength
+        } else {
+          // ==========================================
+          // 凹透镜核心区：反射线以内的中心区域
+          // ==========================================
+          const concaveX = (px / halfW) * 0.22
+          const concaveY = (py / halfH) * 0.22
 
-        // 边缘盲区遮蔽渐变：防止胶囊边缘刚触碰文字时提前漏出
-        const deadZoneFade = Math.min(Math.max((distToEdge - 1.2) / 3.2, 0), 1)
-
-        offsetX = (concaveX + pullX) * deadZoneFade
-        offsetY = (concaveY + pullY) * deadZoneFade
+          offsetX = concaveX
+          offsetY = concaveY
+        }
       }
 
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
