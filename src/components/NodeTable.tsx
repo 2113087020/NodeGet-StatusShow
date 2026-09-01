@@ -22,7 +22,6 @@ const normalMapCache = new Map<string, string>()
 function generateCapsuleNormalMap(width: number, height: number, radius: number) {
   if (typeof document === 'undefined') return ''
 
-  // 内部纹理限宽，优化移动端开销
   const maxTextureSize = 256
   const ratio = Math.min(1, maxTextureSize / Math.max(width, height))
   const canvasWidth = Math.max(32, Math.round(width * ratio))
@@ -47,7 +46,6 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const bX = Math.max(halfW - canvasRadius, 0)
   const bY = Math.max(halfH - canvasRadius, 0)
 
-  // 缩小倒角厚度，反射线向外扩，显著缩窄边缘反射盲区
   const bevelWidth = Math.max(canvasRadius * 0.38, 4)
 
   for (let y = 0; y < canvasHeight; y++) {
@@ -70,7 +68,6 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
       if (d <= 0) {
         const distToEdge = -d
 
-        // 几何法线向量（由中心指向边缘）
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
         let nx = 0
         let ny = 0
@@ -84,20 +81,13 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
         }
 
         if (distToEdge < bevelWidth) {
-          // ==========================================
-          // 环形反射区：从外边缘到反射分界线
-          // ==========================================
           const factor = distToEdge / bevelWidth
           const reflectionCurve = Math.pow(1 - factor, 1.4)
           const reflectionStrength = 1.45 * reflectionCurve
 
-          // 向中心内部深度抓取像素，形成反射镜像
           offsetX = -nx * reflectionStrength
           offsetY = -ny * reflectionStrength
         } else {
-          // ==========================================
-          // 凹透镜核心区：反射线以内的中心区域
-          // ==========================================
           const concaveX = (px / halfW) * 0.22
           const concaveY = (py / halfH) * 0.22
 
@@ -173,10 +163,10 @@ export function NodeTable({ nodes, onOpen }: Props) {
   return (
     <div
       ref={containerRef}
-      className="relative rounded-3xl border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] shadow-sm select-none transition-shadow duration-300 overflow-hidden"
+      className="relative rounded-3xl border border-white/20 dark:border-white/10 bg-slate-900/[0.02] dark:bg-black/[0.18] shadow-sm select-none transition-all duration-300 overflow-hidden"
       style={{
-        backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
-        WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+        backdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
+        WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
         boxShadow: `
           inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
           inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
@@ -210,10 +200,12 @@ export function NodeTable({ nodes, onOpen }: Props) {
             filterUnits="objectBoundingBox"
             colorInterpolationFilters="sRGB"
           >
+            {/* 内置高斯模糊底图，保证磨砂通透感 */}
+            <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blurredBg" />
             {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
             {mapUrl && (
               <feDisplacementMap
-                in="SourceGraphic"
+                in="blurredBg"
                 in2="lensMap"
                 scale={32}
                 xChannelSelector="R"
@@ -226,18 +218,18 @@ export function NodeTable({ nodes, onOpen }: Props) {
 
       <div className="relative z-10 w-full overflow-hidden rounded-3xl">
         <Table>
-          <TableHeader className="bg-white/[0.04] dark:bg-white/[0.02] border-b border-white/20 dark:border-white/10">
+          <TableHeader className="bg-slate-900/[0.03] dark:bg-white/[0.04] border-b border-black/10 dark:border-white/10">
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-8 shrink-0" />
-              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">名称</TableHead>
-              <TableHead className="w-16 min-w-[4rem] text-center text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">地区</TableHead>
-              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">架构</TableHead>
-              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">CPU</TableHead>
-              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">内存</TableHead>
-              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">磁盘</TableHead>
-              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">下行</TableHead>
-              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">上行</TableHead>
-              <TableHead className="w-20 min-w-[4.5rem] text-slate-800 dark:text-slate-200 whitespace-nowrap font-bold">更新</TableHead>
+              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-semibold">名称</TableHead>
+              <TableHead className="w-16 min-w-[4rem] text-center text-slate-800 dark:text-slate-200 whitespace-nowrap font-semibold">地区</TableHead>
+              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-semibold">架构</TableHead>
+              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-semibold">CPU</TableHead>
+              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-semibold">内存</TableHead>
+              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-semibold">磁盘</TableHead>
+              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-semibold">下行</TableHead>
+              <TableHead className="text-slate-800 dark:text-slate-200 whitespace-nowrap font-semibold">上行</TableHead>
+              <TableHead className="w-20 min-w-[4.5rem] text-slate-800 dark:text-slate-200 whitespace-nowrap font-semibold">更新</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -250,7 +242,7 @@ export function NodeTable({ nodes, onOpen }: Props) {
                   key={n.uuid}
                   onClick={() => onOpen?.(n.uuid)}
                   className={cn(
-                    'cursor-pointer transition-colors group border-b border-white/10 dark:border-white/5',
+                    'cursor-pointer transition-colors group border-b border-black/5 dark:border-white/5',
                     'hover:bg-black/5 dark:hover:bg-white/5',
                     !n.online && 'opacity-60 grayscale-[0.3]',
                   )}
@@ -275,16 +267,16 @@ export function NodeTable({ nodes, onOpen }: Props) {
                     {n.meta?.region ? (
                       <Flag code={n.meta.region} className="drop-shadow-sm inline-block" />
                     ) : (
-                      <span className="text-slate-400 dark:text-slate-500 text-sm">—</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">—</span>
                     )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {virt ? (
-                      <Badge variant="outline" className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/40 dark:bg-white/10 border-white/70 dark:border-white/20 text-slate-700 dark:text-slate-300 shadow-[0_1px_2px_rgba(0,0,0,0.03)] uppercase tracking-wide">
+                      <Badge variant="outline" className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/50 dark:bg-white/10 border-slate-300/70 dark:border-white/20 text-slate-800 dark:text-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)] uppercase tracking-wide font-normal">
                         {virt}
                       </Badge>
                     ) : (
-                      <span className="text-slate-400 dark:text-slate-500">—</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">—</span>
                     )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
@@ -302,9 +294,9 @@ export function NodeTable({ nodes, onOpen }: Props) {
                       hint={u.diskTotal ? `${bytes(u.diskUsed)} / ${bytes(u.diskTotal)}` : null}
                     />
                   </TableCell>
-                  <TableCell className="font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">{bytes(u.netIn || 0)}/s</TableCell>
-                  <TableCell className="font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">{bytes(u.netOut || 0)}/s</TableCell>
-                  <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap min-w-[4.5rem]">
+                  <TableCell className="font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap font-medium">{bytes(u.netIn || 0)}/s</TableCell>
+                  <TableCell className="font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap font-medium">{bytes(u.netOut || 0)}/s</TableCell>
+                  <TableCell className="font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap min-w-[4.5rem] font-normal">
                     {relativeAge(u.ts)}
                   </TableCell>
                 </TableRow>
@@ -322,8 +314,8 @@ function CellBar({ value, hint }: { value: number | undefined; hint?: string | n
     <div className="flex items-center gap-2 min-w-[120px]" title={hint || ''}>
       <Progress 
         value={value} 
-        indicatorClassName="bg-black/20 dark:bg-white/20" 
-        className="flex-1 h-1.5 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden" 
+        indicatorClassName="bg-black/25 dark:bg-white/25" 
+        className="flex-1 h-1.5 bg-black/10 dark:bg-white/15 rounded-full overflow-hidden" 
       />
       <span className="font-mono text-xs w-12 text-right text-slate-900 dark:text-slate-100 font-semibold">{pct(value)}</span>
     </div>
