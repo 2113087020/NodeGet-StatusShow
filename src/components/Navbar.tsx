@@ -128,7 +128,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 }
 
 /* =========================================================
- * 液态透镜胶囊组件（已彻底移除背景模糊）
+ * 液态透镜胶囊组件（带无白雾通透模糊）
  * ========================================================= */
 function LiquidCapsuleItem({
   children,
@@ -209,10 +209,12 @@ function LiquidCapsuleItem({
           filterUnits="objectBoundingBox"
           colorInterpolationFilters="sRGB"
         >
+          {/* 注入高斯模糊底图，保证磨砂通透感 */}
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blurredBg" />
           {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
           {mapUrl && (
             <feDisplacementMap
-              in="SourceGraphic"
+              in="blurredBg"
               in2="lensMap"
               scale={32}
               xChannelSelector="R"
@@ -225,8 +227,8 @@ function LiquidCapsuleItem({
   )
 
   const glassStyle: React.CSSProperties = {
-    backdropFilter: mapUrl ? `url(#${filterId})` : undefined,
-    WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : undefined,
+    backdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
+    WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
     boxShadow: `
       inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
       inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
@@ -238,7 +240,7 @@ function LiquidCapsuleItem({
     ...style,
   }
 
-  const commonClass = `relative border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] transition-shadow duration-300 ${className}`
+  const commonClass = `relative border border-white/20 dark:border-white/10 bg-slate-900/[0.02] dark:bg-black/[0.18] transition-all duration-300 overflow-hidden ${className}`
 
   const content = (
     <>
@@ -311,13 +313,13 @@ export function Navbar({
                   {siteName.slice(0, 1)}
                 </div>
               )}
-              <span className="font-bold text-base text-slate-800 dark:text-slate-100 tracking-tight truncate">
+              <span className="font-semibold text-base text-slate-900 dark:text-slate-100 tracking-tight truncate">
                 {siteName}
               </span>
             </LiquidCapsuleItem>
 
             <LiquidCapsuleItem className="pointer-events-auto flex-1 min-w-[72px] max-w-[220px] sm:max-w-xs h-12 px-3 rounded-full flex items-center gap-2 overflow-hidden">
-              <SearchIcon className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
+              <SearchIcon className="h-4 w-4 text-slate-600 dark:text-slate-400 shrink-0" />
               <input
                 type="text"
                 name="site-search"
@@ -333,13 +335,13 @@ export function Navbar({
                 data-1p-ignore="true"
                 data-lpignore="true"
                 data-bwignore="true"
-                className="w-full bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border-none outline-none min-w-0"
+                className="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 border-none outline-none min-w-0"
               />
               {query && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 shrink-0 rounded-full text-slate-500 hover:bg-white/40 active:scale-95"
+                  className="h-6 w-6 shrink-0 rounded-full text-slate-600 hover:bg-black/5 dark:hover:bg-white/10 active:scale-95"
                   onClick={() => onQuery('')}
                   aria-label="清空"
                 >
