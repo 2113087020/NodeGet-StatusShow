@@ -4,13 +4,14 @@ import { FolderSync } from 'lucide-react'
 import { cn } from '../utils/cn'
 
 /* =========================================================
- * Liquid Glass Normal Map 生成器
+ * Liquid Glass Normal Map 生成器（收窄边缘反射环带）
  * ========================================================= */
 const normalMapCache = new Map<string, string>()
 
 function generateCapsuleNormalMap(width: number, height: number, radius: number) {
   if (typeof document === 'undefined') return ''
 
+  // 内部纹理限宽，优化移动端开销
   const maxTextureSize = 256
   const ratio = Math.min(1, maxTextureSize / Math.max(width, height))
   const canvasWidth = Math.max(32, Math.round(width * ratio))
@@ -34,13 +35,16 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const halfH = canvasHeight / 2
   const bX = Math.max(halfW - canvasRadius, 0)
   const bY = Math.max(halfH - canvasRadius, 0)
-  const bevelWidth = canvasRadius * 0.75
+
+  // 缩小倒角厚度，反射线向外扩，显著缩窄边缘反射盲区
+  const bevelWidth = Math.max(canvasRadius * 0.38, 4)
 
   for (let y = 0; y < canvasHeight; y++) {
     for (let x = 0; x < canvasWidth; x++) {
       const px = x - halfW
       const py = y - halfH
 
+      // 1. SDF 计算
       const qx = Math.abs(px) - bX
       const qy = Math.abs(py) - bY
       const maxQx = Math.max(qx, 0)
@@ -54,12 +58,8 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 
       if (d <= 0) {
         const distToEdge = -d
-        const factor = Math.min(Math.max(1 - distToEdge / Math.max(bevelWidth, 0.001), 0), 1)
-        const curve = Math.pow(factor, 1.8)
 
-        const concaveX = (px / halfW) * 0.22 * (1 - factor * 0.8)
-        const concaveY = (py / halfH) * 0.22 * (1 - factor * 0.8)
-
+        // 几何法线向量（由中心指向边缘）
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
         let nx = 0
         let ny = 0
@@ -72,13 +72,27 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        const yPullScale = py > 0 ? 0.65 : 0.85
-        const pullX = -nx * (0.85 * curve)
-        const pullY = -ny * (yPullScale * curve)
-        const edgeFade = Math.min(Math.max(distToEdge / 2, 0), 1)
+        if (distToEdge < bevelWidth) {
+          // ==========================================
+          // 环形反射区：从外边缘到反射分界线
+          // ==========================================
+          const factor = distToEdge / bevelWidth
+          const reflectionCurve = Math.pow(1 - factor, 1.4)
+          const reflectionStrength = 1.45 * reflectionCurve
 
-        offsetX = (concaveX + pullX) * edgeFade
-        offsetY = (concaveY + pullY) * edgeFade
+          // 向中心内部深度抓取像素，形成反射镜像
+          offsetX = -nx * reflectionStrength
+          offsetY = -ny * reflectionStrength
+        } else {
+          // ==========================================
+          // 凹透镜核心区：反射线以内的中心区域
+          // ==========================================
+          const concaveX = (px / halfW) * 0.22
+          const concaveY = (py / halfH) * 0.22
+
+          offsetX = concaveX
+          offsetY = concaveY
+        }
       }
 
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
@@ -142,7 +156,7 @@ function LiquidCapsuleLink({
         lastWidth = width
         lastHeight = height
 
-        const radius = height / 2
+        const radius = Math.min(width, height) / 2
         const url = generateCapsuleNormalMap(width, height, radius)
         setMapUrl(url)
       })
@@ -187,7 +201,7 @@ function LiquidCapsuleLink({
             <feDisplacementMap
               in="SourceGraphic"
               in2="lensMap"
-              scale={26}
+              scale={32}
               xChannelSelector="R"
               yChannelSelector="G"
             />
