@@ -128,7 +128,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 }
 
 /* =========================================================
- * 液态透镜胶囊组件
+ * 液态透镜胶囊组件（已彻底移除背景模糊）
  * ========================================================= */
 function LiquidCapsuleItem({
   children,
@@ -225,8 +225,8 @@ function LiquidCapsuleItem({
   )
 
   const glassStyle: React.CSSProperties = {
-    backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
-    WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+    backdropFilter: mapUrl ? `url(#${filterId})` : undefined,
+    WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : undefined,
     boxShadow: `
       inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
       inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
