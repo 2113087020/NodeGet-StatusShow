@@ -113,7 +113,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 }
 
 /* =========================================================
- * 液态透镜胶囊链接项
+ * 液态透镜胶囊链接项（支持无白雾通透模糊）
  * ========================================================= */
 interface LiquidCapsuleLinkProps {
   href: string
@@ -196,10 +196,16 @@ function LiquidCapsuleLink({
           filterUnits="objectBoundingBox"
           colorInterpolationFilters="sRGB"
         >
+          {/* 1. 背景适度高斯模糊，产生通透磨砂底感（不发白） */}
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blurredBg" />
+          
+          {/* 2. 载入法线图 */}
           {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
+          
+          {/* 3. 在模糊底图上施加液态折射 */}
           {mapUrl && (
             <feDisplacementMap
-              in="SourceGraphic"
+              in="blurredBg"
               in2="lensMap"
               scale={32}
               xChannelSelector="R"
@@ -212,8 +218,8 @@ function LiquidCapsuleLink({
   )
 
   const glassStyle: React.CSSProperties = {
-    backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
-    WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+    backdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
+    WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
     boxShadow: `
       inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
       inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
@@ -233,7 +239,7 @@ function LiquidCapsuleLink({
       rel="noreferrer"
       title={title}
       className={cn(
-        'relative inline-flex items-center rounded-full border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] text-slate-700 dark:text-slate-300 transition-all duration-200 active:scale-95 overflow-hidden',
+        'relative inline-flex items-center rounded-full border border-white/20 dark:border-white/10 bg-slate-900/[0.02] dark:bg-black/[0.18] text-slate-900 dark:text-slate-100 font-semibold transition-all duration-200 active:scale-95 overflow-hidden',
         className,
       )}
       style={glassStyle}
@@ -280,7 +286,7 @@ export function Footer({
       <div className="flex items-center justify-between gap-3 text-xs">
         <LiquidCapsuleLink
           href="https://nezha.wiki/"
-          className="px-4 py-2 font-medium hover:text-blue-600 dark:hover:text-blue-400"
+          className="px-4 py-2 font-semibold text-slate-900 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400"
         >
           {text || 'Powered by Nezha'}
         </LiquidCapsuleLink>
@@ -288,10 +294,10 @@ export function Footer({
         {outdated && (
           <LiquidCapsuleLink
             href={laststDist}
-            className="px-3.5 py-1.5 text-red-600 dark:text-red-400 bg-red-100/30 dark:bg-red-950/30 border-red-200/40 dark:border-red-800/40 hover:bg-red-200/40 dark:hover:bg-red-900/50"
+            className="px-3.5 py-1.5 font-bold text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-950/30 border-red-300/60 dark:border-red-800/40 hover:bg-red-500/20 dark:hover:bg-red-900/50"
             title="检测到新版本，请及时升级以获得最佳体验和安全性"
           >
-            <FolderSync className="inline-block w-3.5 mr-1.5 opacity-80" />
+            <FolderSync className="inline-block w-3.5 mr-1.5 opacity-90" />
             升级到 v{latest}
           </LiquidCapsuleLink>
         )}
