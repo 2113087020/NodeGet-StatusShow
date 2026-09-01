@@ -143,7 +143,6 @@ function LiquidCardItem({
         lastWidth = width
         lastHeight = height
 
-        // 对应 rounded-3xl 的 24px 圆角
         const radius = 24
         const url = generateCapsuleNormalMap(width, height, radius)
         setMapUrl(url)
@@ -234,6 +233,23 @@ export function NodeCard({ node }: { node: Node }) {
   const virt = virtLabel(node)
   const cpu = cpuLabel(node)
 
+  // 流量用量与配额解析
+  const meta = (node.meta || {}) as Record<string, any>
+  const limitGb = Number(meta.traffic_limit ?? meta.metadata_traffic_limit)
+  const usedBytes = Number(meta.traffic_used ?? meta.metadata_traffic_used ?? (u.totalRx || 0) + (u.totalTx || 0))
+  const resetDay = Number(meta.traffic_reset_day ?? meta.metadata_traffic_reset_day) || 1
+
+  const hasLimit = Number.isFinite(limitGb) && limitGb > 0
+  const limitBytes = hasLimit ? limitGb * 1024 * 1024 * 1024 : 0
+  const trafficPct = hasLimit ? Math.min(100, Math.max(0, (usedBytes / limitBytes) * 100)) : undefined
+
+  let trafficSub: string | null = null
+  if (hasLimit) {
+    trafficSub = `${bytes(usedBytes)} / ${limitGb} GiB · 每月 ${resetDay} 号重置`
+  } else {
+    trafficSub = `${bytes(usedBytes)} / ∞ (无上限)`
+  }
+
   return (
     <a href={`#${encodeURIComponent(node.uuid)}`} className="block">
       <LiquidCardItem
@@ -271,6 +287,12 @@ export function NodeCard({ node }: { node: Node }) {
             label="磁盘"
             value={u.disk}
             sub={u.diskTotal ? `${bytes(u.diskUsed)} / ${bytes(u.diskTotal)}` : null}
+          />
+          <Metric
+            label="流量"
+            value={trafficPct}
+            overrideValueText={hasLimit ? undefined : '∞'}
+            sub={trafficSub}
           />
         </div>
 
@@ -315,11 +337,13 @@ function Stat({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode 
 function Metric({
   label,
   value,
+  overrideValueText,
   sub,
   subTitle,
 }: {
   label: string
   value: number | undefined
+  overrideValueText?: string
   sub?: string | null
   subTitle?: string
 }) {
@@ -327,10 +351,12 @@ function Metric({
     <div className="min-w-0">
       <div className="flex justify-between text-xs mb-1.5 font-medium">
         <span className="text-slate-600 dark:text-slate-400">{label}</span>
-        <span className="font-mono text-slate-900 dark:text-slate-100 font-semibold">{pct(value)}</span>
+        <span className="font-mono text-slate-900 dark:text-slate-100 font-semibold">
+          {overrideValueText ?? pct(value)}
+        </span>
       </div>
       <Progress 
-        value={value} 
+        value={value ?? 0} 
         indicatorClassName={loadColor(value)} 
         className="h-1.5 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden" 
       />
