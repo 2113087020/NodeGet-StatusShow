@@ -19,7 +19,7 @@ interface Props {
 }
 
 /* =========================================================
- * Liquid Glass Normal Map 生成器（带尺寸优化与缓存机制）
+ * Liquid Glass Normal Map 生成器（边缘盲区遮蔽 + 红线倒影展开）
  * ========================================================= */
 const normalMapCache = new Map<string, string>()
 
@@ -50,14 +50,16 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const halfH = canvasHeight / 2
   const bX = Math.max(halfW - canvasRadius, 0)
   const bY = Math.max(halfH - canvasRadius, 0)
-  const bevelWidth = canvasRadius * 0.75
+
+  // 边缘到红线的倒角厚度（盲区宽度）
+  const bevelWidth = Math.max(canvasRadius * 0.75, 8)
 
   for (let y = 0; y < canvasHeight; y++) {
     for (let x = 0; x < canvasWidth; x++) {
       const px = x - halfW
       const py = y - halfH
 
-      // 1. SDF 计算
+      // 1. SDF 距离场计算
       const qx = Math.abs(px) - bX
       const qy = Math.abs(py) - bY
       const maxQx = Math.max(qx, 0)
@@ -70,18 +72,10 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
       let offsetY = 0
 
       if (d <= 0) {
-        const distToEdge = -d
-        const factor = Math.min(Math.max(1 - distToEdge / Math.max(bevelWidth, 0.001), 0), 1)
+        const distToEdge = -d // 0 为最外边缘，越大越靠近中心
+        const factor = Math.min(distToEdge / Math.max(bevelWidth, 0.001), 1) // 0(边缘) -> 1(红线内侧)
 
-        // 2. 玻璃倒角凸起曲线：钟形曲线（边缘和内部归零，中间红线处达到最大反射折射）
-        const bellCurve = Math.sin(factor * Math.PI)
-        const reflectionCurve = Math.pow(bellCurve, 1.2)
-
-        // 3. 全局微凹
-        const concaveX = (px / halfW) * 0.22 * (1 - factor * 0.8)
-        const concaveY = (py / halfH) * 0.22 * (1 - factor * 0.8)
-
-        // 4. 几何法线
+        // 方向向量（指向边缘外部）
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
         let nx = 0
         let ny = 0
@@ -94,15 +88,29 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        // 5. 边缘盲区保护与倒影抓取（防止外侧边缘过早采样外部像素）
-        const pullX = nx * (1.35 * reflectionCurve)
-        const pullY = ny * (1.35 * reflectionCurve)
+        /* 
+         * 物理折射/反射分区控制：
+         * - 边缘到红线（factor < 0.65）：强行向中心内侧取样（-nx, -ny），把外侧滑入的文字在盲区内隐藏吞没。
+         * - 红线临界区（0.65 <= factor <= 1.0）：发生倒影反转，文字到达此处时向上/向下镜像展开。
+         * - 红线内核心区（factor >= 1.0）：保持微凹平滑通透。
+         */
+        let pullFactor = 0
+        if (factor < 0.65) {
+          // 盲区：向胶囊深处强制偏移，彻底遮蔽刚贴近边缘的内容
+          const t = factor / 0.65
+          pullFactor = -(1.0 - t * 0.4) 
+        } else {
+          // 红线倒影展开区：折射反转
+          const t = (factor - 0.65) / 0.35
+          pullFactor = (1.0 - t) * 1.3
+        }
 
-        // 距离最外边缘 3px 区域进行平滑阻尼，避免将刚贴近边缘的内容漏进来
-        const deadZoneFade = Math.min(Math.max((distToEdge - 1.5) / 3, 0), 1)
+        // 全局中心轻微微凹
+        const concaveX = (px / halfW) * 0.18
+        const concaveY = (py / halfH) * 0.18
 
-        offsetX = (concaveX + pullX) * deadZoneFade
-        offsetY = (concaveY + pullY) * deadZoneFade
+        offsetX = concaveX + nx * pullFactor
+        offsetY = concaveY + ny * pullFactor
       }
 
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
@@ -209,7 +217,7 @@ function LiquidCapsuleItem({
             <feDisplacementMap
               in="SourceGraphic"
               in2="lensMap"
-              scale={30}
+              scale={28}
               xChannelSelector="R"
               yChannelSelector="G"
             />
