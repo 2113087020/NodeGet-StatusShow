@@ -125,7 +125,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 }
 
 /* =========================================================
- * 液态透镜容器基础组件（带无白雾通透模糊）
+ * 液态透镜容器基础组件（支持独立控制是否模糊）
  * ========================================================= */
 function LiquidLensItem({
   children,
@@ -134,6 +134,7 @@ function LiquidLensItem({
   onClick,
   radiusType = 'capsule',
   customRadius,
+  disableBlur = false,
 }: {
   children: React.ReactNode
   className?: string
@@ -141,6 +142,7 @@ function LiquidLensItem({
   onClick?: () => void
   radiusType?: 'capsule' | 'card'
   customRadius?: number
+  disableBlur?: boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const rawId = useId()
@@ -208,11 +210,13 @@ function LiquidLensItem({
           filterUnits="objectBoundingBox"
           colorInterpolationFilters="sRGB"
         >
-          <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blurredBg" />
+          {!disableBlur && (
+            <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="processedSource" />
+          )}
           {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
           {mapUrl && (
             <feDisplacementMap
-              in="blurredBg"
+              in={disableBlur ? 'SourceGraphic' : 'processedSource'}
               in2="lensMap"
               scale={32}
               xChannelSelector="R"
@@ -228,10 +232,12 @@ function LiquidLensItem({
     <div
       ref={containerRef}
       onClick={onClick}
-      className={`relative border border-white/20 dark:border-white/10 bg-slate-900/[0.02] dark:bg-black/[0.18] transition-all duration-300 overflow-hidden ${className}`}
+      className={`relative border border-white/20 dark:border-white/10 ${
+        disableBlur ? 'bg-white/[0.03] dark:bg-black/[0.10]' : 'bg-slate-900/[0.02] dark:bg-black/[0.18]'
+      } transition-all duration-300 overflow-hidden ${className}`}
       style={{
-        backdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
-        WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
+        backdropFilter: mapUrl ? `url(#${filterId})` : (disableBlur ? 'blur(1px)' : 'blur(10px)'),
+        WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : (disableBlur ? 'blur(1px)' : 'blur(10px)'),
         boxShadow: `
           inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
           inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
@@ -420,7 +426,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
         </svg>
       </div>
 
-      {/* 顶部悬浮导航 */}
+      {/* 顶部悬浮导航（不模糊，保持高清折射） */}
       <header
         className="fixed top-0 inset-x-0 z-30 w-full px-5 sm:px-7 pt-3.5 pb-2 pointer-events-none"
         style={{
@@ -431,6 +437,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
         <div className="max-w-7xl mx-auto flex items-center gap-3">
           <LiquidLensItem
             onClick={onClose}
+            disableBlur={true}
             className="pointer-events-auto w-12 h-12 rounded-full shrink-0 flex items-center justify-center active:scale-95 transition-all duration-200 cursor-pointer"
           >
             <div className="flex items-center justify-center w-full h-full">
@@ -438,7 +445,10 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
             </div>
           </LiquidLensItem>
 
-          <LiquidLensItem className="pointer-events-auto flex-1 min-w-0 h-12 px-4 sm:px-5 rounded-full overflow-hidden">
+          <LiquidLensItem
+            disableBlur={true}
+            className="pointer-events-auto flex-1 min-w-0 h-12 px-4 sm:px-5 rounded-full overflow-hidden"
+          >
             <div className="flex items-center gap-2.5 sm:gap-3.5 w-full">
               <StatusDot online={node.online} />
               {logo && (
