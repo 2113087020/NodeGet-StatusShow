@@ -19,7 +19,7 @@ interface Props {
 }
 
 /* =========================================================
- * Liquid Glass Normal Map 生成器（带尺寸优化与缓存机制）
+ * Liquid Glass Normal Map 生成器（收窄边缘反射环带）
  * ========================================================= */
 const normalMapCache = new Map<string, string>()
 
@@ -50,7 +50,9 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const halfH = canvasHeight / 2
   const bX = Math.max(halfW - canvasRadius, 0)
   const bY = Math.max(halfH - canvasRadius, 0)
-  const bevelWidth = canvasRadius * 0.75
+
+  // 缩小倒角厚度，反射线向外扩，显著缩窄边缘反射盲区
+  const bevelWidth = Math.max(canvasRadius * 0.38, 4)
 
   for (let y = 0; y < canvasHeight; y++) {
     for (let x = 0; x < canvasWidth; x++) {
@@ -87,17 +89,13 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 
         if (distToEdge < bevelWidth) {
           // ==========================================
-          // 环形反射区：从最外边缘到反射分界线之间
+          // 环形反射区：从外边缘到反射分界线
           // ==========================================
-          // factor: 0(最外边缘) -> 1(反射线)
           const factor = distToEdge / bevelWidth
-          
-          // 在外边缘处产生最大向内抓取深度，将胶囊内部底层画面向外圈边缘折射
-          // 越靠近反射线，折射量越平滑归零并与内凹区自然交接
           const reflectionCurve = Math.pow(1 - factor, 1.4)
           const reflectionStrength = 1.45 * reflectionCurve
 
-          // 负号表示向中心内部深度抓取像素，形成反射镜像，隐藏边缘外部原本的内容
+          // 向中心内部深度抓取像素，形成反射镜像
           offsetX = -nx * reflectionStrength
           offsetY = -ny * reflectionStrength
         } else {
