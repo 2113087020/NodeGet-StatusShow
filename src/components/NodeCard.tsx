@@ -233,10 +233,15 @@ export function NodeCard({ node }: { node: Node }) {
   const virt = virtLabel(node)
   const cpu = cpuLabel(node)
 
-  // 流量用量与配额解析
+  // 1. 获取网卡累计物理总流量
+  const totalReceived = node.dynamic?.total_received ?? 0
+  const totalTransmitted = node.dynamic?.total_transmitted ?? 0
+  const rawTotalBytes = totalReceived + totalTransmitted
+
+  // 2. 从 meta 读取流控配置（支持驼峰与下划线前缀）
   const meta = (node.meta || {}) as Record<string, any>
   const limitGb = Number(meta.traffic_limit ?? meta.metadata_traffic_limit)
-  const usedBytes = Number(meta.traffic_used ?? meta.metadata_traffic_used ?? (u.totalRx || 0) + (u.totalTx || 0))
+  const usedBytes = Number(meta.traffic_used ?? meta.metadata_traffic_used ?? rawTotalBytes)
   const resetDay = Number(meta.traffic_reset_day ?? meta.metadata_traffic_reset_day) || 1
 
   const hasLimit = Number.isFinite(limitGb) && limitGb > 0
