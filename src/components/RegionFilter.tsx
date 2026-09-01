@@ -223,10 +223,10 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
       ref={containerRef}
       onTouchStart={triggerIndicator}
       onTouchEnd={scheduleHide}
-      className="relative w-full rounded-full border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] shadow-sm select-none transition-shadow duration-300 overflow-hidden"
+      className="relative w-full rounded-full border border-white/20 dark:border-white/10 bg-slate-900/[0.02] dark:bg-black/[0.18] shadow-sm select-none transition-all duration-300 overflow-hidden"
       style={{
-        backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
-        WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+        backdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
+        WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
         boxShadow: `
           inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
           inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
@@ -260,10 +260,12 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
             filterUnits="objectBoundingBox"
             colorInterpolationFilters="sRGB"
           >
+            {/* 注入高斯模糊，获得通透磨砂底感 */}
+            <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blurredBg" />
             {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
             {mapUrl && (
               <feDisplacementMap
-                in="SourceGraphic"
+                in="blurredBg"
                 in2="lensMap"
                 scale={32}
                 xChannelSelector="R"
@@ -278,18 +280,18 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="w-full overflow-x-auto flex items-center px-1.5 py-1.5 divide-x divide-black/5 dark:divide-white/10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          className="w-full overflow-x-auto flex items-center px-1.5 py-1.5 divide-x divide-black/10 dark:divide-white/10 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
           {/* 全部 选项 */}
           <div className="flex items-center px-1 shrink-0">
             <Segment selected={active === null} onClick={() => handleClick(null)}>
-              <span className="font-medium">全部</span>
+              <span className="font-semibold">全部</span>
               <span
                 className={cn(
                   'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
                   active === null
-                    ? 'bg-black/10 dark:bg-white/15 text-slate-900 dark:text-slate-100'
-                    : 'bg-black/5 dark:bg-white/10 opacity-70',
+                    ? 'bg-black/15 dark:bg-white/20 text-slate-900 dark:text-slate-100 font-semibold'
+                    : 'bg-black/5 dark:bg-white/10 text-slate-600 dark:text-slate-400 font-medium',
                 )}
               >
                 {total}
@@ -310,8 +312,8 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
                   className={cn(
                     'text-[10px] font-mono px-1.5 py-0.5 rounded-full transition-colors',
                     active === r.code
-                      ? 'bg-black/10 dark:bg-white/15 text-slate-900 dark:text-slate-100'
-                      : 'bg-black/5 dark:bg-white/10 opacity-70',
+                      ? 'bg-black/15 dark:bg-white/20 text-slate-900 dark:text-slate-100 font-semibold'
+                      : 'bg-black/5 dark:bg-white/10 text-slate-600 dark:text-slate-400 font-medium',
                   )}
                 >
                   {r.count}
@@ -331,7 +333,7 @@ export function RegionFilter({ regions, total, active, onChange }: Props) {
             )}
           >
             <div
-              className="h-full w-[28%] bg-black/20 dark:bg-white/20 rounded-full"
+              className="h-full w-[28%] bg-black/25 dark:bg-white/25 rounded-full"
               style={{
                 transform: `translateX(${scrollProgress * 257}%)`,
               }}
@@ -360,7 +362,7 @@ function Segment({
         'inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full transition-all duration-200 whitespace-nowrap active:scale-95 shrink-0',
         selected
           ? 'bg-black/10 dark:bg-white/15 text-slate-900 dark:text-slate-100 font-semibold shadow-inner'
-          : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5',
+          : 'text-slate-800 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 font-medium',
       )}
     >
       {children}
