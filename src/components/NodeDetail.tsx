@@ -136,7 +136,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 }
 
 /* =========================================================
- * 液态透镜容器基础组件
+ * 液态透镜容器基础组件（带无白雾通透模糊）
  * ========================================================= */
 function LiquidLensItem({
   children,
@@ -219,10 +219,11 @@ function LiquidLensItem({
           filterUnits="objectBoundingBox"
           colorInterpolationFilters="sRGB"
         >
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blurredBg" />
           {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
           {mapUrl && (
             <feDisplacementMap
-              in="SourceGraphic"
+              in="blurredBg"
               in2="lensMap"
               scale={32}
               xChannelSelector="R"
@@ -238,10 +239,10 @@ function LiquidLensItem({
     <div
       ref={containerRef}
       onClick={onClick}
-      className={`relative border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] transition-shadow duration-300 overflow-hidden ${className}`}
+      className={`relative border border-white/20 dark:border-white/10 bg-slate-900/[0.02] dark:bg-black/[0.18] transition-all duration-300 overflow-hidden ${className}`}
       style={{
-        backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
-        WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+        backdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
+        WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
         boxShadow: `
           inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
           inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
@@ -260,16 +261,16 @@ function LiquidLensItem({
 }
 
 const TOOLTIP_STYLE = {
-  background: 'rgba(255, 255, 255, 0.85)',
-  border: '1px solid rgba(255, 255, 255, 0.9)',
+  background: 'rgba(255, 255, 255, 0.92)',
+  border: '1px solid rgba(255, 255, 255, 0.95)',
   borderRadius: 8,
   fontSize: 11,
-  boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-  color: '#1e293b',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+  color: '#0f172a',
 }
 
 const DARK_TOOLTIP_STYLE = {
-  background: 'rgba(15, 23, 42, 0.85)',
+  background: 'rgba(15, 23, 42, 0.92)',
   border: '1px solid rgba(255, 255, 255, 0.15)',
   borderRadius: 8,
   fontSize: 11,
@@ -347,7 +348,99 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
   const history = node.history || []
 
   return (
-    <div className="fixed inset-0 z-50 h-full w-full overflow-hidden flex flex-col bg-soft select-none animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 h-full w-full overflow-hidden flex flex-col select-none animate-in fade-in duration-150">
+      {/* 矢量插画背景层 */}
+      <div 
+        aria-hidden="true" 
+        className="fixed inset-0 -z-10 w-full h-full min-h-[100dvh] bg-soft pointer-events-none overflow-hidden"
+      >
+        <svg
+          viewBox="0 0 1000 1600"
+          preserveAspectRatio="xMidYMid slice"
+          className="w-full h-full opacity-70 dark:opacity-55 transition-opacity duration-300"
+        >
+          {/* 顶部柔和暖光弧带 */}
+          <path
+            d="M0,-100 Q500,320 1000,-80 L1000,-100 Z"
+            className="fill-amber-200/70 dark:fill-amber-950/30"
+          />
+
+          {/* Alegria 几何大太阳 */}
+          <g>
+            <circle
+              cx="800"
+              cy="270"
+              r="165"
+              className="fill-orange-200/80 dark:fill-orange-950/50"
+            />
+            <circle
+              cx="800"
+              cy="270"
+              r="105"
+              className="fill-amber-400 dark:fill-amber-600"
+            />
+            <circle
+              cx="800"
+              cy="270"
+              r="55"
+              className="fill-rose-400 dark:fill-rose-600"
+            />
+          </g>
+
+          {/* 远景粉橙色山脉 */}
+          <path
+            d="M 0,720 Q 300,400 600,640 T 1000,540 L 1000,1600 L 0,1600 Z"
+            className="fill-rose-200 dark:fill-slate-800"
+          />
+
+          {/* 中景清爽青绿斜坡 */}
+          <path
+            d="M 0,860 C 250,710 450,960 750,810 C 860,760 940,790 1000,820 L 1000,1600 L 0,1600 Z"
+            className="fill-teal-200 dark:fill-teal-900"
+          />
+
+          {/* 暖黄色中景过渡块 */}
+          <path
+            d="M 0,1050 Q 400,860 800,1100 L 1000,1030 L 1000,1600 L 0,1600 Z"
+            className="fill-amber-200 dark:fill-amber-900/80"
+          />
+
+          {/* 鲜明蓝天青色河流 */}
+          <path
+            d="M 1000,950 C 650,1020 550,1200 200,1150 C 100,1130 0,1160 0,1160 L 0,1310 C 250,1290 450,1360 700,1210 C 880,1110 950,1070 1000,1060 Z"
+            className="fill-sky-300 dark:fill-sky-800"
+          />
+
+          {/* 近景草绿大地 */}
+          <path
+            d="M 0,1260 C 350,1150 650,1420 1000,1290 L 1000,1600 L 0,1600 Z"
+            className="fill-emerald-300 dark:fill-emerald-950"
+          />
+
+          {/* 近景珊瑚橙斜坡 */}
+          <path
+            d="M 0,1400 Q 450,1270 1000,1450 L 1000,1600 L 0,1600 Z"
+            className="fill-orange-300 dark:fill-slate-900"
+          />
+
+          {/* 左侧几何植物 */}
+          <g className="fill-teal-500 dark:fill-teal-400">
+            <path d="M 120,1500 Q 110,1210 190,1070 Q 130,1210 140,1500 Z" />
+            <circle cx="190" cy="1070" r="50" />
+            <circle cx="140" cy="1135" r="38" className="fill-orange-400 dark:fill-orange-500" />
+            <circle cx="235" cy="1125" r="32" className="fill-amber-300 dark:fill-amber-400" />
+          </g>
+
+          {/* 右侧几何植物叶片 */}
+          <g className="fill-teal-600 dark:fill-teal-400">
+            <path d="M 870,1600 Q 910,1370 810,1250 Q 950,1370 900,1600 Z" />
+            <ellipse cx="780" cy="1250" rx="55" ry="30" transform="rotate(-30 780 1250)" />
+            <ellipse cx="880" cy="1300" rx="48" ry="26" transform="rotate(25 880 1300)" className="fill-emerald-400 dark:fill-emerald-600" />
+            <ellipse cx="770" cy="1350" rx="45" ry="24" transform="rotate(-20 770 1350)" />
+          </g>
+        </svg>
+      </div>
+
       {/* 顶部悬浮导航 */}
       <header
         className="fixed top-0 inset-x-0 z-30 w-full px-5 sm:px-7 pt-3.5 pb-2 pointer-events-none"
@@ -362,7 +455,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
             className="pointer-events-auto w-12 h-12 rounded-full shrink-0 flex items-center justify-center active:scale-95 transition-all duration-200 cursor-pointer"
           >
             <div className="flex items-center justify-center w-full h-full">
-              <ArrowLeft className="h-5 w-5 text-slate-800 dark:text-slate-100" />
+              <ArrowLeft className="h-5 w-5 text-slate-900 dark:text-slate-100" />
             </div>
           </LiquidLensItem>
 
@@ -377,11 +470,11 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
                   loading="lazy"
                 />
               )}
-              <span className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate min-w-0 tracking-tight">
+              <span className="font-bold text-sm sm:text-base text-slate-950 dark:text-slate-50 truncate min-w-0 tracking-tight">
                 {displayName(node)}
               </span>
               <Flag code={node.meta?.region} className="shrink-0" />
-              <span className="hidden md:inline truncate text-xs font-mono text-slate-500 dark:text-slate-400">
+              <span className="hidden md:inline truncate text-xs font-mono text-slate-700 dark:text-slate-300 font-medium">
                 {node.uuid}
               </span>
               <div className="ml-auto flex items-center gap-1.5 shrink-0 overflow-hidden">
@@ -394,7 +487,7 @@ export function NodeDetail({ node, onClose, showSource, pool }: Props) {
                   <Badge
                     key={t}
                     variant="outline"
-                    className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/40 dark:bg-white/10 border-white/70 dark:border-white/20 shrink-0"
+                    className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/60 dark:bg-white/15 border-slate-300/80 dark:border-white/20 text-slate-900 dark:text-slate-100 font-medium shrink-0"
                   >
                     {t}
                   </Badge>
@@ -554,7 +647,7 @@ function Section({
     <LiquidLensItem radiusType="card" className="p-6 rounded-3xl">
       <div className="w-full">
         <div className="flex items-center justify-between gap-2 mb-5">
-          <div className="text-xs uppercase tracking-wider font-semibold text-slate-700 dark:text-slate-300">
+          <div className="text-xs uppercase tracking-wider font-bold text-slate-800 dark:text-slate-200">
             {title}
           </div>
           {action}
@@ -569,8 +662,8 @@ function KV({ k, v }: { k: string; v: ReactNode }) {
   if (v == null || v === '') return null
   return (
     <div className="flex justify-between items-center gap-3 text-sm py-1.5 px-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-      <span className="text-slate-600 dark:text-slate-400 font-medium">{k}</span>
-      <span className="font-mono text-right text-slate-900 dark:text-slate-100 font-semibold truncate">
+      <span className="text-slate-700 dark:text-slate-300 font-medium">{k}</span>
+      <span className="font-mono text-right text-slate-950 dark:text-slate-50 font-bold truncate">
         {v}
       </span>
     </div>
@@ -593,7 +686,7 @@ function Ring({ label, value, sub }: { label: string; value?: number; sub?: stri
             r={r}
             fill="none"
             strokeWidth={8}
-            className="stroke-black/5 dark:stroke-white/10"
+            className="stroke-black/10 dark:stroke-white/10"
           />
           {hasValue && (
             <circle
@@ -610,14 +703,14 @@ function Ring({ label, value, sub }: { label: string; value?: number; sub?: stri
             />
           )}
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">
+        <div className="absolute inset-0 flex items-center justify-center text-base sm:text-lg font-bold text-slate-950 dark:text-slate-50 font-mono">
           {pct(value)}
         </div>
       </div>
-      <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1">{label}</div>
+      <div className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-1">{label}</div>
       {sub && (
         <div
-          className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate max-w-full"
+          className="text-xs font-mono text-slate-600 dark:text-slate-400 font-medium truncate max-w-full"
           title={sub}
         >
           {sub}
@@ -643,10 +736,10 @@ function Spark({ data, dataKey, label, stroke, domain, format, isDark }: SparkPr
   const tooltipStyle = isDark ? DARK_TOOLTIP_STYLE : TOOLTIP_STYLE
 
   return (
-    <div className="rounded-2xl p-4 transition-all bg-black/[0.02] dark:bg-white/[0.03] border border-white/20 dark:border-white/10 shadow-inner">
+    <div className="rounded-2xl p-4 transition-all bg-slate-900/[0.03] dark:bg-white/[0.04] border border-white/20 dark:border-white/10 shadow-inner">
       <div className="flex justify-between items-baseline mb-2">
-        <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{label}</span>
-        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{label}</span>
+        <span className="font-mono text-xs font-bold text-slate-950 dark:text-slate-50">
           {format(last)}
         </span>
       </div>
@@ -655,7 +748,7 @@ function Spark({ data, dataKey, label, stroke, domain, format, isDark }: SparkPr
           <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={stroke} stopOpacity={0.35} />
+                <stop offset="5%" stopColor={stroke} stopOpacity={0.4} />
                 <stop offset="95%" stopColor={stroke} stopOpacity={0} />
               </linearGradient>
             </defs>
@@ -670,7 +763,7 @@ function Spark({ data, dataKey, label, stroke, domain, format, isDark }: SparkPr
               type="monotone"
               dataKey={dataKey}
               stroke={stroke}
-              strokeWidth={1.8}
+              strokeWidth={2}
               fill={`url(#${id})`}
               isAnimationActive={false}
               dot={false}
@@ -720,7 +813,7 @@ function LatencyBlock({
     })
 
   const rangeSelector = (
-    <div className="inline-flex items-center rounded-full p-0.5 bg-black/[0.04] dark:bg-white/[0.06] border border-white/20 dark:border-white/10 divide-x divide-black/5 dark:divide-white/10 select-none">
+    <div className="inline-flex items-center rounded-full p-0.5 bg-black/[0.06] dark:bg-white/[0.08] border border-white/20 dark:border-white/10 divide-x divide-black/10 dark:divide-white/10 select-none">
       {TIME_RANGES.map(r => (
         <button
           key={r.hours}
@@ -729,8 +822,8 @@ function LatencyBlock({
           className={cn(
             'px-2 py-0.5 text-[10px] rounded-full transition-all duration-200 whitespace-nowrap active:scale-95',
             hours === r.hours
-              ? 'bg-black/10 dark:bg-white/15 text-slate-900 dark:text-slate-100 font-semibold shadow-inner'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5',
+              ? 'bg-black/15 dark:bg-white/20 text-slate-950 dark:text-slate-50 font-bold shadow-inner'
+              : 'text-slate-700 dark:text-slate-300 font-medium hover:bg-black/5 dark:hover:bg-white/5',
           )}
         >
           {r.label}
@@ -741,9 +834,9 @@ function LatencyBlock({
 
   return (
     <Section title={title} action={rangeSelector}>
-      <div className="relative h-60 bg-black/[0.02] dark:bg-slate-950/20 rounded-2xl border border-white/20 dark:border-white/10 p-2 mb-4">
+      <div className="relative h-60 bg-slate-900/[0.02] dark:bg-slate-950/30 rounded-2xl border border-white/20 dark:border-white/10 p-2 mb-4">
         {empty && (
-          <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400">
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-600 dark:text-slate-400 font-medium">
             {loading ? '正在从探针节点加载中…' : `暂无 ${type} 延迟数据`}
           </div>
         )}
@@ -767,13 +860,13 @@ function LatencyBlock({
                   }
                   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
                 }}
-                tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }}
-                axisLine={{ stroke: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}
-                tickLine={{ stroke: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}
+                tick={{ fontSize: 10, fill: isDark ? '#cbd5e1' : '#475569', fontWeight: 600 }}
+                axisLine={{ stroke: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)' }}
+                tickLine={{ stroke: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)' }}
               />
               <YAxis
                 tickFormatter={v => `${v}ms`}
-                tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }}
+                tick={{ fontSize: 10, fill: isDark ? '#cbd5e1' : '#475569', fontWeight: 600 }}
                 width={48}
                 domain={['auto', 'auto']}
                 axisLine={false}
@@ -790,7 +883,7 @@ function LatencyBlock({
                   type="monotone"
                   dataKey={s.name}
                   stroke={s.color}
-                  strokeWidth={1.8}
+                  strokeWidth={2}
                   dot={false}
                   connectNulls
                   isAnimationActive={false}
@@ -808,8 +901,8 @@ function LatencyBlock({
       </div>
 
       {stats.length > 0 && (
-        <div className="mt-3 border-t border-white/20 dark:border-white/10 pt-3.5 space-y-1">
-          <div className="flex items-center px-2.5 pb-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+        <div className="mt-3 border-t border-black/10 dark:border-white/10 pt-3.5 space-y-1">
+          <div className="flex items-center px-2.5 pb-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
             <span className="flex-1">检测来源节点</span>
             <span className="w-20 text-right">平均延迟</span>
             <span className="w-16 text-right">抖动</span>
@@ -851,25 +944,25 @@ function LatencyStatsRow({
         hidden ? 'opacity-35' : 'opacity-100',
       )}
     >
-      <span className="flex items-center gap-2.5 flex-1 min-w-0 text-slate-700 dark:text-slate-200">
+      <span className="flex items-center gap-2.5 flex-1 min-w-0 text-slate-800 dark:text-slate-100">
         <span
-          className="inline-block w-3.5 h-1 rounded-full shrink-0"
+          className="inline-block w-3.5 h-1.5 rounded-full shrink-0"
           style={{ background: color }}
         />
-        <span className="truncate font-semibold">{name}</span>
+        <span className="truncate font-bold">{name}</span>
       </span>
-      <span className="w-20 text-right tabular-nums font-mono text-slate-900 dark:text-slate-100 font-bold">
+      <span className="w-20 text-right tabular-nums font-mono text-slate-950 dark:text-slate-50 font-bold">
         {avg != null ? ms(avg) : '—'}
       </span>
-      <span className="w-16 text-right tabular-nums font-mono text-slate-600 dark:text-slate-400 font-medium">
+      <span className="w-16 text-right tabular-nums font-mono text-slate-700 dark:text-slate-300 font-semibold">
         {jitter != null ? ms(jitter) : '—'}
       </span>
       <span
         className={cn(
           'w-14 text-right tabular-nums font-mono',
           lossRate >= 5
-            ? 'text-red-500 font-bold'
-            : 'text-slate-600 dark:text-slate-400 font-medium',
+            ? 'text-red-600 dark:text-red-400 font-bold'
+            : 'text-slate-700 dark:text-slate-300 font-semibold',
         )}
       >
         {lossRate.toFixed(1)}%
@@ -884,8 +977,8 @@ function GlassBadge({ children, className }: { children: ReactNode; className?: 
       variant="outline"
       className={cn(
         'text-[10px] px-2.5 py-0.5 rounded-full',
-        'bg-white/40 dark:bg-white/10 border-white/70 dark:border-white/20',
-        'text-slate-800 dark:text-slate-200 uppercase tracking-wide font-medium',
+        'bg-white/60 dark:bg-white/15 border-slate-300/80 dark:border-white/20',
+        'text-slate-900 dark:text-slate-100 uppercase tracking-wide font-semibold',
         className,
       )}
     >
@@ -905,13 +998,13 @@ function CostSection({ meta }: { meta: NodeMeta }) {
   if (days == null) daysLabel = '未设置'
   else if (days < 0) {
     daysLabel = `已过期 ${Math.abs(days)} 天`
-    daysClass = 'text-red-500'
+    daysClass = 'text-red-600 dark:text-red-400'
   } else if (days <= 7) {
     daysLabel = `${days} 天`
-    daysClass = 'text-red-500'
+    daysClass = 'text-red-600 dark:text-red-400'
   } else if (days <= 30) {
     daysLabel = `${days} 天`
-    daysClass = 'text-orange-500'
+    daysClass = 'text-orange-600 dark:text-orange-400'
   } else {
     daysLabel = `${days} 天`
   }
@@ -935,13 +1028,13 @@ function CostSection({ meta }: { meta: NodeMeta }) {
 
         {meta.expireTime && days != null && (
           <div className="mt-4 px-1">
-            <div className="h-2 w-full rounded-full bg-black/5 dark:bg-slate-800/80 overflow-hidden">
+            <div className="h-2 w-full rounded-full bg-black/10 dark:bg-slate-800/80 overflow-hidden">
               <div
                 className={cn('h-full rounded-full transition-all duration-500', barColor)}
                 style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
               />
             </div>
-            <div className="text-[10px] font-mono text-center text-slate-500 dark:text-slate-400 mt-2">
+            <div className="text-[10px] font-mono text-center text-slate-600 dark:text-slate-400 font-semibold mt-2">
               周期剩余 {progress.toFixed(0)}%
             </div>
           </div>
