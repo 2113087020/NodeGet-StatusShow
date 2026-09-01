@@ -19,14 +19,13 @@ interface Props {
 }
 
 /* =========================================================
- * Liquid Glass Normal Map 生成器（带尺寸优化与缓存机制）
+ * 真实物理圆弧法线贴图生成器（修复撕扯感，生成向心边缘折射）
  * ========================================================= */
 const normalMapCache = new Map<string, string>()
 
 function generateCapsuleNormalMap(width: number, height: number, radius: number) {
   if (typeof document === 'undefined') return ''
 
-  // 内部纹理限宽，优化移动端开销
   const maxTextureSize = 256
   const ratio = Math.min(1, maxTextureSize / Math.max(width, height))
   const canvasWidth = Math.max(32, Math.round(width * ratio))
@@ -50,64 +49,64 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const halfH = canvasHeight / 2
   const bX = Math.max(halfW - canvasRadius, 0)
   const bY = Math.max(halfH - canvasRadius, 0)
-  const bevelWidth = canvasRadius * 0.75
+  
+  // 边缘物理倒角宽度
+  const bevelWidth = Math.max(canvasRadius * 0.6, 6)
 
   for (let y = 0; y < canvasHeight; y++) {
     for (let x = 0; x < canvasWidth; x++) {
       const px = x - halfW
       const py = y - halfH
 
-      // 1. SDF 计算
+      // 1. 胶囊体 SDF 计算
       const qx = Math.abs(px) - bX
       const qy = Math.abs(py) - bY
       const maxQx = Math.max(qx, 0)
       const maxQy = Math.max(qy, 0)
       const outsideDist = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
       const insideDist = Math.min(Math.max(qx, qy), 0)
-      const d = outsideDist + insideDist - canvasRadius
+      const distToBorder = outsideDist + insideDist - canvasRadius
 
       let offsetX = 0
       let offsetY = 0
 
-      if (d <= 0) {
-        const distToEdge = -d
-        const factor = Math.min(Math.max(1 - distToEdge / Math.max(bevelWidth, 0.001), 0), 1)
-        const curve = Math.pow(factor, 1.8)
+      // 2. 内部边缘物理曲率计算（半球切面向心折射）
+      if (distToBorder <= 0) {
+        const depth = -distToBorder
+        if (depth < bevelWidth) {
+          const t = depth / bevelWidth
+          // 凸透镜半球剖面正弦法线斜率
+          const slope = Math.cos((t * Math.PI) / 2)
 
-        // 2. 全局微凹
-        const concaveX = (px / halfW) * 0.22 * (1 - factor * 0.8)
-        const concaveY = (py / halfH) * 0.22 * (1 - factor * 0.8)
+          let dirX = 0
+          let dirY = 0
+          const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
 
-        // 3. 几何法线
-        const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
-        let nx = 0
-        let ny = 0
+          if (len > 0.0001) {
+            dirX = (maxQx / len) * Math.sign(px)
+            dirY = (maxQy / len) * Math.sign(py)
+          } else {
+            if (Math.abs(px) > Math.abs(py)) {
+              dirX = Math.sign(px)
+            } else {
+              dirY = Math.sign(py)
+            }
+          }
 
-        if (len > 0.001) {
-          nx = (maxQx / len) * Math.sign(px)
-          ny = (maxQy / len) * Math.sign(py)
-        } else {
-          nx = Math.abs(px) > Math.abs(py) ? Math.sign(px) : 0
-          ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
+          // 向中心折射压缩背景，模拟透镜全内反射
+          offsetX = -dirX * slope
+          offsetY = -dirY * slope
         }
-
-        // 4. 上下拉扯参数与防溢出羽化
-        const yPullScale = py > 0 ? 0.65 : 0.85
-        const pullX = -nx * (0.85 * curve)
-        const pullY = -ny * (yPullScale * curve)
-        const edgeFade = Math.min(Math.max(distToEdge / 2, 0), 1)
-
-        offsetX = (concaveX + pullX) * edgeFade
-        offsetY = (concaveY + pullY) * edgeFade
       }
 
+      // 3. 映射到 RGB 法线颜色空间 (0.0 -> 128)
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
       const gVal = Math.min(Math.max(Math.round(128 + offsetY * 127), 0), 255)
 
       const index = (y * canvasWidth + x) * 4
       data[index] = rVal
       data[index + 1] = gVal
-      data[index + 2] = 128
+      data[index + 2] = 255
       data[index + 3] = 255
     }
   }
@@ -119,7 +118,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 }
 
 /* =========================================================
- * 液态透镜胶囊组件
+ * 液态透镜胶囊组件（含菲涅尔边缘高光与反射层）
  * ========================================================= */
 function LiquidCapsuleItem({
   children,
@@ -179,8 +178,6 @@ function LiquidCapsuleItem({
   const filterElement = (
     <svg
       aria-hidden="true"
-      width="0"
-      height="0"
       className="fixed pointer-events-none"
       style={{
         position: 'fixed',
@@ -205,7 +202,7 @@ function LiquidCapsuleItem({
             <feDisplacementMap
               in="SourceGraphic"
               in2="lensMap"
-              scale={26}
+              scale={22}
               xChannelSelector="R"
               yChannelSelector="G"
             />
@@ -216,12 +213,15 @@ function LiquidCapsuleItem({
   )
 
   const glassStyle: React.CSSProperties = {
-    backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
-    WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+    backdropFilter: mapUrl ? `url(#${filterId}) blur(0.5px)` : 'blur(12px)',
+    WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(0.5px)` : 'blur(12px)',
+    // 菲涅尔多层高光反射与边缘暗带
     boxShadow: `
-      inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
-      inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
-      0 8px 24px -4px rgba(0, 0, 0, 0.06)
+      inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+      inset 0 1.5px 2px 0px rgba(255, 255, 255, 0.7),
+      inset 0 -1.5px 2px 0px rgba(0, 0, 0, 0.3),
+      inset 0 0 10px 1px rgba(255, 255, 255, 0.12),
+      0 12px 30px -6px rgba(0, 0, 0, 0.35)
     `,
     isolation: 'isolate',
     transform: 'translate3d(0, 0, 0)',
@@ -229,7 +229,8 @@ function LiquidCapsuleItem({
     ...style,
   }
 
-  const commonClass = `relative border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] transition-shadow duration-300 ${className}`
+  // 叠加边缘虹彩/反射微光层
+  const commonClass = `relative overflow-hidden border border-white/30 dark:border-white/20 bg-gradient-to-b from-white/[0.12] via-transparent to-black/[0.08] transition-all duration-300 before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:p-[1px] before:bg-gradient-to-tr before:from-cyan-400/20 before:via-transparent before:to-rose-400/20 ${className}`
 
   const content = (
     <>
@@ -265,7 +266,7 @@ function LiquidCapsuleItem({
 }
 
 /* =========================================================
- * 导航栏组件
+ * 导航栏主组件
  * ========================================================= */
 export function Navbar({
   siteName,
@@ -282,7 +283,7 @@ export function Navbar({
     <>
       {/* 顶部固定栏 */}
       <header
-        className="fixed top-0 inset-x-0 z-30 w-full px-5 sm:px-7 pt-3.5 pb-2 pointer-events-none"
+        className="fixed top-0 inset-x-0 z-30 w-full px-4 sm:px-7 pt-3.5 pb-2 pointer-events-none"
         style={{
           transform: 'translate3d(0, 0, 0)',
           WebkitTransform: 'translate3d(0, 0, 0)',
@@ -293,7 +294,7 @@ export function Navbar({
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
             <LiquidCapsuleItem
               href="./"
-              className="pointer-events-auto h-12 px-4 sm:px-5 rounded-full flex items-center gap-3 shrink-0 overflow-hidden hover:opacity-95 active:scale-95 transition-all duration-200"
+              className="pointer-events-auto h-12 px-4 sm:px-5 rounded-full flex items-center gap-3 shrink-0 hover:opacity-95 active:scale-95 transition-transform duration-200"
             >
               {logo ? (
                 <img src={logo} alt="" className="w-7 h-7 rounded-lg object-contain drop-shadow-sm shrink-0" />
@@ -307,7 +308,7 @@ export function Navbar({
               </span>
             </LiquidCapsuleItem>
 
-            <LiquidCapsuleItem className="pointer-events-auto flex-1 min-w-[72px] max-w-[220px] sm:max-w-xs h-12 px-3 rounded-full flex items-center gap-2 overflow-hidden">
+            <LiquidCapsuleItem className="pointer-events-auto flex-1 min-w-[72px] max-w-[220px] sm:max-w-xs h-12 px-3 rounded-full flex items-center gap-2">
               <SearchIcon className="h-4 w-4 text-slate-500 dark:text-slate-400 shrink-0" />
               <input
                 type="text"
@@ -342,7 +343,7 @@ export function Navbar({
 
           {/* 右侧：排序按钮 */}
           <div className="pointer-events-auto shrink-0 w-12 h-12">
-            <LiquidCapsuleItem className="w-12 h-12 p-0 rounded-full flex items-center justify-center active:scale-95 transition-all duration-200">
+            <LiquidCapsuleItem className="w-12 h-12 p-0 rounded-full flex items-center justify-center active:scale-95 transition-transform duration-200">
               <SortMenu value={sort} onChange={onSort} />
             </LiquidCapsuleItem>
           </div>
@@ -359,13 +360,13 @@ export function Navbar({
           }}
         >
           <div className="pointer-events-auto w-14 h-14 shrink-0">
-            <LiquidCapsuleItem className="w-14 h-14 p-0 rounded-full flex items-center justify-center active:scale-95 transition-all">
+            <LiquidCapsuleItem className="w-14 h-14 p-0 rounded-full flex items-center justify-center active:scale-95 transition-transform duration-200">
               <ThemeToggle />
             </LiquidCapsuleItem>
           </div>
 
           <div className="pointer-events-auto h-14 shrink-0">
-            <LiquidCapsuleItem className="h-14 px-2 rounded-full flex items-center overflow-hidden active:scale-95 transition-all">
+            <LiquidCapsuleItem className="h-14 px-2 rounded-full flex items-center active:scale-95 transition-transform duration-200">
               <ViewToggle value={view} onChange={onView} />
             </LiquidCapsuleItem>
           </div>
