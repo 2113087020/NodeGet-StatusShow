@@ -19,7 +19,7 @@ interface Props {
 }
 
 /* =========================================================
- * Liquid Glass Normal Map 生成器（边缘盲区遮蔽 + 红线倒影展开）
+ * Liquid Glass Normal Map 生成器（精确倒影反射 + 边缘盲区过滤）
  * ========================================================= */
 const normalMapCache = new Map<string, string>()
 
@@ -51,7 +51,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
   const bX = Math.max(halfW - canvasRadius, 0)
   const bY = Math.max(halfH - canvasRadius, 0)
 
-  // 边缘到红线的倒角厚度（盲区宽度）
+  // 倒角厚度（红线所在位置约占倒角深度的 60% 处）
   const bevelWidth = Math.max(canvasRadius * 0.75, 8)
 
   for (let y = 0; y < canvasHeight; y++) {
@@ -72,10 +72,10 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
       let offsetY = 0
 
       if (d <= 0) {
-        const distToEdge = -d // 0 为最外边缘，越大越靠近中心
-        const factor = Math.min(distToEdge / Math.max(bevelWidth, 0.001), 1) // 0(边缘) -> 1(红线内侧)
+        const distToEdge = -d // 0 为外边缘，增大向内部延伸
+        const factor = Math.min(Math.max(distToEdge / bevelWidth, 0), 1) // 0(边缘) -> 1(倒角内部结束)
 
-        // 方向向量（指向边缘外部）
+        // 几何法线方向向量
         const len = Math.sqrt(maxQx * maxQx + maxQy * maxQy)
         let nx = 0
         let ny = 0
@@ -88,29 +88,17 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
           ny = Math.abs(py) >= Math.abs(px) ? Math.sign(py) : 0
         }
 
-        /* 
-         * 物理折射/反射分区控制：
-         * - 边缘到红线（factor < 0.65）：强行向中心内侧取样（-nx, -ny），把外侧滑入的文字在盲区内隐藏吞没。
-         * - 红线临界区（0.65 <= factor <= 1.0）：发生倒影反转，文字到达此处时向上/向下镜像展开。
-         * - 红线内核心区（factor >= 1.0）：保持微凹平滑通透。
-         */
-        let pullFactor = 0
-        if (factor < 0.65) {
-          // 盲区：向胶囊深处强制偏移，彻底遮蔽刚贴近边缘的内容
-          const t = factor / 0.65
-          pullFactor = -(1.0 - t * 0.4) 
-        } else {
-          // 红线倒影展开区：折射反转
-          const t = (factor - 0.65) / 0.35
-          pullFactor = (1.0 - t) * 1.3
-        }
+        // 2. 红线倒影曲线：在红线位置(factor ≈ 0.5)达到最大倒影拉扯
+        // 边缘(factor=0)向中心大幅折射将内容埋没，文字到达红线才被反向拉出形成倒影
+        const reflectionIntensity = Math.sin(factor * Math.PI)
+        const invertedPull = (Math.pow(reflectionIntensity, 1.5) - (1.0 - factor) * 0.6) * 1.5
 
-        // 全局中心轻微微凹
-        const concaveX = (px / halfW) * 0.18
-        const concaveY = (py / halfH) * 0.18
+        // 全局微凹
+        const concaveX = (px / halfW) * 0.22 * (1 - factor * 0.8)
+        const concaveY = (py / halfH) * 0.22 * (1 - factor * 0.8)
 
-        offsetX = concaveX + nx * pullFactor
-        offsetY = concaveY + ny * pullFactor
+        offsetX = concaveX - nx * invertedPull
+        offsetY = concaveY - ny * invertedPull
       }
 
       const rVal = Math.min(Math.max(Math.round(128 + offsetX * 127), 0), 255)
@@ -217,7 +205,7 @@ function LiquidCapsuleItem({
             <feDisplacementMap
               in="SourceGraphic"
               in2="lensMap"
-              scale={28}
+              scale={32}
               xChannelSelector="R"
               yChannelSelector="G"
             />
