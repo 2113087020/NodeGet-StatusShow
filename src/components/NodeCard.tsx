@@ -120,7 +120,7 @@ function generateCapsuleNormalMap(width: number, height: number, radius: number)
 }
 
 /* =========================================================
- * 液态透镜卡片外壳
+ * 液态透镜卡片外壳（支持无白雾通透模糊）
  * ========================================================= */
 function LiquidCardItem({
   children,
@@ -157,6 +157,7 @@ function LiquidCardItem({
         lastWidth = width
         lastHeight = height
 
+        // 对应 rounded-3xl 的 24px 圆角
         const radius = 24
         const url = generateCapsuleNormalMap(width, height, radius)
         setMapUrl(url)
@@ -197,10 +198,16 @@ function LiquidCardItem({
           filterUnits="objectBoundingBox"
           colorInterpolationFilters="sRGB"
         >
+          {/* 1. 先对背景执行适度高斯模糊，产生磨砂质感（不产生白雾） */}
+          <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blurredBg" />
+          
+          {/* 2. 载入法线图 */}
           {mapUrl && <feImage href={mapUrl} preserveAspectRatio="none" result="lensMap" />}
+          
+          {/* 3. 在模糊底图上施加液态物理折射 */}
           {mapUrl && (
             <feDisplacementMap
-              in="SourceGraphic"
+              in="blurredBg"
               in2="lensMap"
               scale={32}
               xChannelSelector="R"
@@ -215,10 +222,10 @@ function LiquidCardItem({
   return (
     <div
       ref={containerRef}
-      className={`relative border border-white/20 dark:border-white/10 bg-white/[0.03] dark:bg-black/[0.10] transition-shadow duration-300 overflow-hidden ${className}`}
+      className={`relative border border-white/20 dark:border-white/10 bg-slate-900/[0.02] dark:bg-black/[0.18] transition-all duration-300 overflow-hidden ${className}`}
       style={{
-        backdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
-        WebkitBackdropFilter: mapUrl ? `url(#${filterId}) blur(1px)` : 'blur(8px)',
+        backdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
+        WebkitBackdropFilter: mapUrl ? `url(#${filterId})` : 'blur(10px)',
         boxShadow: `
           inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
           inset 0 0 8px 0 rgba(255, 255, 255, 0.04),
@@ -268,7 +275,7 @@ export function NodeCard({ node }: { node: Node }) {
       <LiquidCardItem
         className={cn(
           'p-5 sm:p-6 rounded-3xl transition-all duration-200',
-          'hover:bg-white/[0.08] dark:hover:bg-white/[0.05] hover:scale-[1.01] active:scale-[0.99]',
+          'hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.04] hover:scale-[1.01] active:scale-[0.99]',
           !node.online && 'opacity-60',
         )}
       >
