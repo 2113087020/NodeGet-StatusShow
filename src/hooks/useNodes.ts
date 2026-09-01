@@ -49,6 +49,9 @@ const META_KEYS = [
   'metadata_price_unit',
   'metadata_price_cycle',
   'metadata_expire_time',
+  'metadata_traffic_limit',
+  'metadata_traffic_used',
+  'metadata_traffic_reset_day',
 ]
 const DYN_INTERVAL_MS = 2000
 const HISTORY_LIMIT = 60
@@ -67,6 +70,9 @@ function emptyMeta(): NodeMeta {
     priceUnit: '$',
     priceCycle: 30,
     expireTime: '',
+    trafficLimit: null,
+    trafficUsed: 0,
+    trafficResetDay: 1,
   }
 }
 
@@ -80,6 +86,11 @@ function parseMeta(raw: Record<string, unknown>): NodeMeta {
   const order = Number(raw.metadata_order)
   const price = Number(raw.metadata_price)
   const cycle = Number(raw.metadata_price_cycle)
+  
+  const trafficLimitNum = Number(raw.metadata_traffic_limit)
+  const trafficUsedNum = Number(raw.metadata_traffic_used)
+  const resetDayNum = Number(raw.metadata_traffic_reset_day)
+
   return {
     name: raw.metadata_name ? String(raw.metadata_name) : '',
     region: raw.metadata_region ? String(raw.metadata_region) : '',
@@ -93,6 +104,9 @@ function parseMeta(raw: Record<string, unknown>): NodeMeta {
     priceUnit: raw.metadata_price_unit ? String(raw.metadata_price_unit) : '$',
     priceCycle: Number.isFinite(cycle) && cycle > 0 ? cycle : 30,
     expireTime: raw.metadata_expire_time ? String(raw.metadata_expire_time) : '',
+    trafficLimit: Number.isFinite(trafficLimitNum) && trafficLimitNum > 0 ? trafficLimitNum : null,
+    trafficUsed: Number.isFinite(trafficUsedNum) && trafficUsedNum >= 0 ? trafficUsedNum : 0,
+    trafficResetDay: Number.isFinite(resetDayNum) && resetDayNum >= 1 && resetDayNum <= 31 ? resetDayNum : 1,
   }
 }
 
