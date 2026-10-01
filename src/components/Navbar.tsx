@@ -19,6 +19,36 @@ interface Props {
 }
 
 /* =========================================================
+ * 小鸡图标 (纯 SVG 矢量绘制)
+ * ========================================================= */
+function ChickenIcon({ className = 'w-6 h-6' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {/* 鸡冠 */}
+      <path d="M12 3c-1 0-1.5.8-1.5 1.5 0 .2.05.5.15.7-.7.2-1.15.8-1.15 1.5 0 .2.05.5.15.7-.8.2-1.35.9-1.35 1.7 0 .3.1.6.25.9" />
+      {/* 身体与头部轮廓 */}
+      <path d="M14.5 7.5C16.5 7.5 18 9 18 11c0 .8-.3 1.6-.7 2.2C18.2 14.5 19 16.2 19 18c0 1.7-1.3 3-3 3H8c-2.8 0-5-2.2-5-5 0-3.2 2.3-5.9 5.4-6.4C8.7 8.5 10.4 7.5 12.5 7.5h2z" />
+      {/* 鸡喙 */}
+      <path d="M18 10l3.5 1.2-3.5 1.2" />
+      {/* 鸡眼睛 */}
+      <circle cx="14" cy="10.5" r="0.8" fill="currentColor" />
+      {/* 翅膀线条 */}
+      <path d="M10 14c1.8 0 3.2 1.3 3.5 3" />
+      {/* 鸡爪 */}
+      <path d="M9 21v2m0 0l-1.2.8M9 23l1.2.8M14 21v2m0 0l-1.2.8M14 23l1.2.8" />
+    </svg>
+  )
+}
+
+/* =========================================================
  * Liquid Glass Normal Map 生成器（收窄边缘反射环带）
  * ========================================================= */
 const normalMapCache = new Map<string, string>()
@@ -245,7 +275,7 @@ function LiquidCapsuleItem({
   const content = (
     <>
       {filterElement}
-      <span className="relative z-10 flex items-center h-full w-full">{children}</span>
+      <span className="relative z-10 flex items-center justify-center h-full w-full">{children}</span>
     </>
   )
 
@@ -254,6 +284,8 @@ function LiquidCapsuleItem({
       <a
         ref={containerRef as React.Ref<HTMLAnchorElement>}
         href={href}
+        target="_blank"
+        rel="noopener noreferrer"
         className={commonClass}
         style={glassStyle}
         onClick={onClick}
@@ -369,15 +401,32 @@ export function Navbar({
             WebkitTransform: 'translate3d(0, 0, 0)',
           }}
         >
+          {/* 左侧：主题切换悬浮球 */}
           <div className="pointer-events-auto w-14 h-14 shrink-0">
             <LiquidCapsuleItem className="w-14 h-14 p-0 rounded-full flex items-center justify-center active:scale-95 transition-all">
               <ThemeToggle />
             </LiquidCapsuleItem>
           </div>
 
+          {/* 中间：视图切换长条胶囊 */}
           <div className="pointer-events-auto h-14 shrink-0">
             <LiquidCapsuleItem className="h-14 px-2 rounded-full flex items-center overflow-hidden active:scale-95 transition-all">
               <ViewToggle value={view} onChange={onView} />
+            </LiquidCapsuleItem>
+          </div>
+
+          {/* 右侧：小鸡页面外链悬浮球（对称设计） */}
+          <div className="pointer-events-auto w-14 h-14 shrink-0">
+            <LiquidCapsuleItem
+              href="https://nodeget-dashboard.123906.xyz/chicken/"
+              className="w-14 h-14 p-0 rounded-full flex items-center justify-center active:scale-95 transition-all group"
+            >
+              <div
+                className="w-full h-full flex items-center justify-center text-slate-700 dark:text-slate-200 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors"
+                title="进入小鸡列表"
+              >
+                <ChickenIcon className="w-6 h-6 transition-transform group-hover:scale-110" />
+              </div>
             </LiquidCapsuleItem>
           </div>
         </div>
